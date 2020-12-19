@@ -1,6 +1,5 @@
 #include "CircleDetector.hpp"
 #include "crossMarkDetector.hpp"
-#include "CalcMatrix.h"
 #include <vector>
 
 using namespace std;
@@ -47,13 +46,13 @@ int main(int argc, char* argv[]) {
 
         waitKey(1);
     }*/
-    
-    
+        
     // ´¦Àíµ¥·ùÍ¼Æ¬
     Mat img = imread(imagename);
+    Mat img1 = img;
     cvtColor(img, img, COLOR_BGR2GRAY);
     img.convertTo(img, CV_32FC1); img = img / 255;
-
+    
     crossMarkDetectorParams Dparams;
     Dparams.height = img.rows;
     Dparams.width = img.cols;
@@ -62,6 +61,9 @@ int main(int argc, char* argv[]) {
     crossMarkDetector filter(Dparams, Rparams);
     filter.feed(img);
 
+    CircleDetect C;
+    C.DetectCircle(img1);
+        
     //Matrix chess{};
     //chess.CalcMat(FWS);
 
