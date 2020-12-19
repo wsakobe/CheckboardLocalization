@@ -199,9 +199,9 @@ void crossMarkDetector::buildMatrix(const Mat &img, std::vector<pointInform> &cr
     std::vector<matrixInform> matrix(crossPtsList.size());
     std::vector<std::array<Point, 4>> dict(crossPtsList.size()); // 方向传递
     int labelNum = 0;
-    for (int io=0; io<crossPtsList.size(); ++io) {
+    for (int io = 0; io < crossPtsList.size(); ++io) {
         // 准备矩阵起始点
-        if (matrix[io].mLabel!=-1) continue;
+        if (matrix[io].mLabel != -1) continue;
         matrix[io].mPos = Point(0, 0);
         matrix[io].mLabel = labelNum;
         dict[io] = { Point(0,1),Point(1,0),Point(0,-1),Point(-1,0) };
@@ -213,7 +213,7 @@ void crossMarkDetector::buildMatrix(const Mat &img, std::vector<pointInform> &cr
             int it = member[ig];
             for (int il=0; il<4; ++il) {
                 int linkPt = links[it].idx[il];
-                if (linkPt==-1 || matrix[linkPt].mLabel!=-1) continue;
+                if (linkPt == -1 || matrix[linkPt].mLabel != -1) continue;
                 int linkPort = links[it].port[il];
                 
                 matrix[linkPt].mPos   = matrix[it].mPos + dict[it][il];
@@ -229,8 +229,6 @@ void crossMarkDetector::buildMatrix(const Mat &img, std::vector<pointInform> &cr
                 dict[linkPt][1] = Point(dict[linkPt][0].y,-dict[linkPt][0].x);
                 dict[linkPt][2] = Point(dict[linkPt][1].y,-dict[linkPt][1].x);
                 dict[linkPt][3] = Point(dict[linkPt][2].y,-dict[linkPt][2].x);
-                
-                int a=1;
             }
         }
     }
