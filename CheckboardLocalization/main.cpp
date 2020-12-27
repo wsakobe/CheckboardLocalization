@@ -67,7 +67,7 @@ int main(int argc, char* argv[]) {
     //Matrix chess{};
     //chess.CalcMat(FWS);
 
-    waitKey(10000);
+    waitKey(0);
 
     return 0;
 }
