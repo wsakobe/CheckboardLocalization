@@ -139,8 +139,8 @@ std::vector<linkInform> crossMarkDetector::buildLinkers(std::vector<pointInform>
 			}
 		}
 	}
-	// 检查是否有未连接的黑白界线
 
+	// 检查是否有未连接的黑白界线
 	std::vector<bool> wellSupported(links.size(), true);
 	std::vector<int> chain(links.size());
 	for (int it = 0; it < links.size(); ++it) chain[it] = it;
@@ -198,13 +198,13 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 	// 建立矩阵
 	std::vector<matrixInform> matrix(crossPtsList.size());
 	std::vector<std::array<Point, 4>> dict(crossPtsList.size()); // 方向传递
+	dict[0] = { Point(-1,0),Point(0,-1),Point(1,0),Point(0,1) };
 	int labelNum = 0;
 	for (int io = 0; io < crossPtsList.size(); ++io) {
 		// 准备矩阵起始点
 		if (matrix[io].mLabel != -1) continue;
 		matrix[io].mPos = Point(0, 0);
 		matrix[io].mLabel = labelNum;
-		dict[io] = { Point(0,1),Point(1,0),Point(0,-1),Point(-1,0) };
 		++labelNum;
 		std::vector<int> member;
 		member.push_back(io);
@@ -214,26 +214,26 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 			for (int il = 0; il < 4; ++il) {
 				int linkPt = links[it].idx[il];
 				if (linkPt == -1 || matrix[linkPt].mLabel != -1) continue;
-				int linkPort = links[it].port[il];
 
-				matrix[linkPt].mPos = matrix[it].mPos + dict[it][il];
+				int angleAB = 270;
+				if (crossPtsList[linkPt].Pos.x != crossPtsList[it].Pos.x)
+					angleAB = atan2(crossPtsList[linkPt].Pos.y - crossPtsList[it].Pos.y, crossPtsList[linkPt].Pos.x - crossPtsList[it].Pos.x) / CV_PI * 180 + 180;
+
+				matrix[linkPt].mPos = matrix[it].mPos + dict[0][angleAB / 90];
 				matrix[linkPt].mLabel = matrix[it].mLabel;
 				member.push_back(linkPt);
-
-				dict[linkPt][linkPort] = -dict[it][il];
-				if (linkPort == 0)    dict[linkPt][0] = dict[linkPt][linkPort];
-				if (linkPort == 1)    dict[linkPt][0] = Point(-dict[linkPt][1].y, dict[linkPt][1].x);
-				if (linkPort == 2)    dict[linkPt][0] = -dict[linkPt][2];
-				if (linkPort == 3)    dict[linkPt][0] = Point(dict[linkPt][3].y, -dict[linkPt][3].x);
-
-				dict[linkPt][1] = Point(dict[linkPt][0].y, -dict[linkPt][0].x);
-				dict[linkPt][2] = Point(dict[linkPt][1].y, -dict[linkPt][1].x);
-				dict[linkPt][3] = Point(dict[linkPt][2].y, -dict[linkPt][2].x);
 			}
 		}
 	}
+	extractLinkTable(crossPtsList, matrix, links);
+	displayMatrix(img, crossPtsList, matrix, links);
+}
 
-	// display
+void crossMarkDetector::extractLinkTable(std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links) {
+
+}
+
+void crossMarkDetector::displayMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links) {
 	Mat imgMark(Dparams.height, Dparams.width, CV_32FC3);
 	cvtColor(img, imgMark, COLOR_GRAY2RGB);
 	for (int it = 0; it < crossPtsList.size(); ++it) {
@@ -253,8 +253,8 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 		putText(imgMark, label, crossPtsList[it].Pos, FONT_ITALIC, 0.3, Scalar(0, 0, 1), 1);
 	}
 
-	for (int i = 0; i < key_points.size(); i++)
-		printf("%d %d %d\n", (int)key_points[i].pt.x, (int)key_points[i].pt.y, i);
+	//for (int i = 0; i < key_points.size(); i++)
+		//printf("%d %d %d\n", (int)key_points[i].pt.x, (int)key_points[i].pt.y, i);
 
 	imshow("imgMark", imgMark);
 	//    imwrite("img.bmp", 255*img);
