@@ -18,9 +18,6 @@
     <ClCompile Include="main.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
-    <ClCompile Include="CircleDetector.cpp">
-      <Filter>源文件</Filter>
-    </ClCompile>
     <ClCompile Include="crossMarkDetector.cpp">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -36,9 +33,6 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="unistd.h">
-      <Filter>头文件</Filter>
-    </ClInclude>
-    <ClInclude Include="CircleDetector.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>

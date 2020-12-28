@@ -1,6 +1,4 @@
-#include "CircleDetector.hpp"
 #include "crossMarkDetector.hpp"
-#include <vector>
 
 using namespace std;
 using namespace cv;
@@ -14,7 +12,8 @@ int main(int argc, char* argv[]) {
     img = imread(imagename);
     capture >> img;
     
-    CircleDetect CD;
+    cvtColor(img, img, COLOR_BGR2GRAY);
+    img.convertTo(img, CV_32FC1); img = img / 255;
 
     crossMarkDetectorParams Dparams;
     Dparams.height = img.rows;
@@ -30,23 +29,17 @@ int main(int argc, char* argv[]) {
             return -1;
         }
         
+        Mat img1;
+        img1 = img;
         cvtColor(img, img, COLOR_BGR2GRAY);
-        
-        //圆形检测
-        
-        //CD.DetectCircle(img);
         
         //棋盘格提取
         img.convertTo(img, CV_32FC1); img = img / 255;
-        filter.feed(img);
-
-        //统计棋盘造型
-        Matrix chess{};
-        chess.CalcMat(FWS);
+        filter.feed(img, img1);
 
         waitKey(1);
-    }*/
-        
+    }
+    */ 
     // 处理单幅图片
     Mat img = imread(imagename);
     Mat img1 = img;
@@ -59,14 +52,8 @@ int main(int argc, char* argv[]) {
     crossPointResponderParams Rparams;
 
     crossMarkDetector filter(Dparams, Rparams);
-    filter.feed(img);
-
-    CircleDetect C;
-    C.DetectCircle(img1);
-        
-    //Matrix chess{};
-    //chess.CalcMat(FWS);
-
+    filter.feed(img, img1);
+   
     waitKey(0);
 
     return 0;

@@ -146,13 +146,11 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="CircleDetector.cpp" />
     <ClCompile Include="crossMarkDetector.cpp" />
     <ClCompile Include="crossPointResponder.cpp" />
     <ClCompile Include="main.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="CircleDetector.hpp" />
     <ClInclude Include="crossMarkDetector.hpp" />
     <ClInclude Include="crossPointResponder.hpp" />
     <ClInclude Include="unistd.h" />

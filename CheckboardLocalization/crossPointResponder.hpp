@@ -13,6 +13,8 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
 #include <stdio.h>
+#include "opencv2/imgproc/types_c.h"
+#include "opencv2/features2d/features2d.hpp"
 #include "unistd.h"
 
 using namespace cv;
