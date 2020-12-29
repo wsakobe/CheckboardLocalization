@@ -279,7 +279,9 @@ void crossMarkDetector::extractLinkTable(std::vector<pointInform>& crossPtsList,
 						}
 						binary <<= 1;
 					}
-				if (abs(crossPtsList[i].Bdirct - 90) > abs(crossPtsList[i].Wdirct - 90)) keyMatrixValue += binary;
+				float dist, angle;
+				distAngle(crossPtsList[i].subPos, crossPtsList[matrix2[label][matrix[i].mPos.x + 1][matrix[i].mPos.y]].subPos, dist, angle);
+				if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle)) keyMatrixValue += binary;
 				printf("%d\n", keyMatrixValue);
 				break;
 			}
