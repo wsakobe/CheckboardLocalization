@@ -21,11 +21,10 @@ crossMarkDetector::~crossMarkDetector()
 {
 }
 
-void crossMarkDetector::feed(const Mat& img, const Mat& img1)
+void crossMarkDetector::feed(const Mat& img)
 {
 	assert(img.type() == CV_32FC1); //判断图片格式是否正确
 	findCrossPoint(img, crossPtsList);
-	circleDetector(img1);
 	buildMatrix(img, crossPtsList);
 
 	//    imwrite("img.bmp",255*img);
@@ -78,24 +77,6 @@ void crossMarkDetector::findCrossPoint(const Mat& img, std::vector<pointInform>&
 		if (locMaxFlag[it] != 1)  ip = crossPtsList.erase(ip);
 		else                    ++ip;
 	}
-}
-
-void crossMarkDetector::circleDetector(const Mat& img) {
-	SimpleBlobDetector::Params params;
-	params.filterByColor = false;
-	params.minThreshold = 80;
-	params.maxThreshold = 160;
-	params.thresholdStep = 5;
-
-	params.minArea = 10;
-	params.maxArea = 150;
-
-	params.minConvexity = .65f;
-	params.minInertiaRatio = .65f;
-
-	Ptr<SimpleBlobDetector> detector = SimpleBlobDetector::create(params);
-
-	detector->detect(img, key_points);
 }
 
 std::vector<std::vector<int>> crossMarkDetector::buildNeighbors(const std::vector<pointInform>& crossPtsList, const int r)
@@ -216,7 +197,7 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 	// 建立矩阵
 	std::vector<matrixInform> matrix(crossPtsList.size());
 	std::vector<std::array<Point, 4>> dict(crossPtsList.size()); // 方向传递
-	int matrix2[10][20][20];
+	int matrix2[10][50][50];
 	memset(matrix2, -1, sizeof(matrix2));
 	dict[0] = { Point(-1,0),Point(0,-1),Point(1,0),Point(0,1) };
 	int labelNum = 0;
@@ -246,25 +227,40 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 			}
 		}
 	}
-	extractLinkTable(crossPtsList, matrix, links, matrix2, labelNum);
+	extractLinkTable(img, crossPtsList, matrix, links, matrix2, labelNum);
 	displayMatrix(img, crossPtsList, matrix, links);
 }
 
+bool checkLattice(int label, int x, int y, int matrix2[10][50][50]) {
+	if ((matrix2[label][x + 1][y] != -1) && (matrix2[label][x + 1][y + 1] != -1) && (matrix2[label][x][y + 1] != -1)) return true;
+	return false;
+}
+/*
 bool checkNinePatch(int point, int label, int x, int y, int matrix2[10][20][20]) {
 	for (int i = 0; i < 4; i++)
 		for (int j = 0; j < 4; j++)
-			if (matrix2[label][x + i][y + j] == -1) return false;
+			if (keyMatrix[label][x + i][y + j] == -1) return false;
 	return true;
-}
+}*/
 
-void crossMarkDetector::extractLinkTable(std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, int matrix2[10][20][20], int labelnum) {
-	int Chessboard[4][4] = { -1 };
-	float thresCircleCenter = 10.0;
+void crossMarkDetector::extractLinkTable(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, int matrix2[10][50][50], int labelnum) {
+	float dist, angle;
+	Point2f pos1, pos2, pos3, centerPoint;
+	memset(keyMatrix, -1, sizeof(keyMatrix));
 
 	for (int label = 0; label < labelnum; label++)
-		for (int i = 0; i <= crossPtsList.size(); i++) {
-			if (checkNinePatch(i, label, matrix[i].mPos.x, matrix[i].mPos.y, matrix2)) {
-				printf("%d %d\n", matrix[i].mPos.x, matrix[i].mPos.y);
+		for (int i = 0; i < crossPtsList.size(); i++) {
+			if (checkLattice(label, matrix[i].mPos.x, matrix[i].mPos.y, matrix2)) {
+				pos1 = crossPtsList[matrix2[label][matrix[i].mPos.x + 1][matrix[i].mPos.y]].subPos;
+				pos2 = crossPtsList[matrix2[label][matrix[i].mPos.x][matrix[i].mPos.y + 1]].subPos;
+				pos3 = crossPtsList[matrix2[label][matrix[i].mPos.x][matrix[i].mPos.y + 1]].subPos;
+				centerPoint = (pos1 + pos2 + pos3 + crossPtsList[i].subPos) / 4;
+				distAngle(crossPtsList[i].subPos, crossPtsList[matrix2[label][matrix[i].mPos.x + 1][matrix[i].mPos.y]].subPos, dist, angle);
+				unsigned char pixel = (img.ptr<uchar>((int)centerPoint.x)[(int)centerPoint.y] + img.ptr<uchar>((int)centerPoint.x)[(int)centerPoint.y - 1] + img.ptr<uchar>((int)centerPoint.x - 1)[(int)centerPoint.y] + img.ptr<uchar>((int)centerPoint.x + 1)[(int)centerPoint.y] + img.ptr<uchar>((int)centerPoint.x)[(int)centerPoint.y + 1]) / 5;
+				if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle)) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = pixel > 100 ? 0 : 1;
+				else keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = pixel > 100 ? 1 : 0;
+				
+				/*
 				int keyMatrixValue = 0;
 				int binary = 1;
 				for (int ib = 0; ib < 3; ib++)
@@ -279,11 +275,10 @@ void crossMarkDetector::extractLinkTable(std::vector<pointInform>& crossPtsList,
 						}
 						binary <<= 1;
 					}
-				float dist, angle;
 				distAngle(crossPtsList[i].subPos, crossPtsList[matrix2[label][matrix[i].mPos.x + 1][matrix[i].mPos.y]].subPos, dist, angle);
 				if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle)) keyMatrixValue += binary;
 				printf("%d\n", keyMatrixValue);
-				break;
+				break;*/
 			}
 		}
 }
@@ -307,12 +302,8 @@ void crossMarkDetector::displayMatrix(const Mat& img, std::vector<pointInform>& 
 		label.append(std::to_string(matrix[it].mPos.y));
 		putText(imgMark, label, crossPtsList[it].Pos, FONT_ITALIC, 0.3, Scalar(0, 0, 1), 1);
 	}
-
-	for (int i = 0; i < key_points.size(); i++)
-		circle(imgMark, Point((int)key_points[i].pt.x, (int)key_points[i].pt.y), (int)(key_points[i].size / 2), Scalar(1, 0, 0));
 	
 	imshow("imgMark", imgMark);
-	//    imwrite("img.bmp", 255*img);
 	imwrite("imgMark.bmp", 255 * imgMark);
 }
 

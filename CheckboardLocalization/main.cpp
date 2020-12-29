@@ -42,7 +42,6 @@ int main(int argc, char* argv[]) {
     */ 
     // ´¦Àíµ¥·ùÍ¼Æ¬
     Mat img = imread(imagename);
-    Mat img1 = img;
     cvtColor(img, img, COLOR_BGR2GRAY);
     img.convertTo(img, CV_32FC1); img = img / 255;
     
@@ -52,7 +51,7 @@ int main(int argc, char* argv[]) {
     crossPointResponderParams Rparams;
 
     crossMarkDetector filter(Dparams, Rparams);
-    filter.feed(img, img1);
+    filter.feed(img);
    
     waitKey(0);
 
