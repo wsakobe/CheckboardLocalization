@@ -48,6 +48,12 @@ struct matrixInform
     Point   mPos;           // 矩阵坐标
 };
 
+struct linkTableInform
+{
+    Point                   mPos; // 10bit值
+    std::array<Point, 4>    dir;            // 方向
+};
+
 class crossMarkDetector
 {
 private:
@@ -58,7 +64,7 @@ private:
     void findCrossPoint(const Mat &img, std::vector<pointInform> &crossPtsList);                                                                       // 寻找交叉点(比响应器的结果多一轮非极大值抑制), 形成crossPtsList
     void buildMatrix(const Mat &img, std::vector<pointInform> &crossPtsList);                                                                          // 基于crossPtsList解读棋盘格信息, 改变mLabel和mPos
     void displayMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links);       // 显示最终结果
-    void extractLinkTable(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, int matrix2[10][50][50], int labelnum); // 提取LinkTable信息，获得Bias
+    std::vector<matrixInform> extractLinkTable(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, int matrix2[10][50][50], int labelnum); // 提取LinkTable信息，获得Bias
     void circleDetector(const Mat &img);
 
     std::vector<std::vector<int>> buildNeighbors(const std::vector<pointInform> &crossPtsList, int r);

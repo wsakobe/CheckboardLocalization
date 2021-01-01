@@ -29,13 +29,11 @@ int main(int argc, char* argv[]) {
             return -1;
         }
         
-        Mat img1;
-        img1 = img;
         cvtColor(img, img, COLOR_BGR2GRAY);
         
         //ÆåÅÌ¸ñÌáÈ¡
         img.convertTo(img, CV_32FC1); img = img / 255;
-        filter.feed(img, img1);
+        filter.feed(img);
 
         waitKey(1);
     }
@@ -54,6 +52,6 @@ int main(int argc, char* argv[]) {
     filter.feed(img);
    
     waitKey(0);
-
+    
     return 0;
 }
