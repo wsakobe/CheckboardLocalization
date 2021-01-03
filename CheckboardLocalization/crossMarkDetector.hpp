@@ -59,14 +59,15 @@ class crossMarkDetector
 private:
     crossPointResponder responder;           // 交叉点响应器
     std::vector<pointInform> crossPtsList;   // 交叉点存储数组
-    int  keyMatrix[10][50][50];
-    bool signal = false;
+    int  keyMatrix[10][50][50], matrix2[10][50][50];
+    bool signal = false, updateSuccess;
     linkTableInform linkTabel[1024];
 
     void findCrossPoint(const Mat &img, std::vector<pointInform> &crossPtsList);                                                                       // 寻找交叉点(比响应器的结果多一轮非极大值抑制), 形成crossPtsList
     void buildMatrix(const Mat &img, std::vector<pointInform> &crossPtsList);                                                                          // 基于crossPtsList解读棋盘格信息, 改变mLabel和mPos
     void displayMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links);       // 显示最终结果
     std::vector<matrixInform> extractLinkTable(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, int matrix2[10][50][50], int labelnum); // 提取LinkTable信息，获得Bias
+    void outputLists(std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix);
 
     std::vector<std::vector<int>> buildNeighbors(const std::vector<pointInform> &crossPtsList, int r);
     // 基于边长2*r+1, 为crossPtsList中的所有点生成近邻索引

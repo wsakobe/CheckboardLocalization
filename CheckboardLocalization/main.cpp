@@ -9,7 +9,7 @@ int main(int argc, char* argv[]) {
     const char* imagename = "C:\\Users\\wsa\\Desktop\\123.bmp";//此处为测试图片路径
     FILE* stream1;
     freopen_s(&stream1, "linkTabel.txt", "r", stdin);
-    
+    /*
     VideoCapture capture(0);
     img = imread(imagename);
     capture >> img;
@@ -38,8 +38,8 @@ int main(int argc, char* argv[]) {
         filter.feed(img);
 
         waitKey(1);
-    }
-     /*
+    } */
+    
     // 处理单幅图片
     Mat img = imread(imagename);
     cvtColor(img, img, COLOR_BGR2GRAY);
@@ -54,6 +54,6 @@ int main(int argc, char* argv[]) {
     filter.feed(img);
    
     waitKey(0);
-    */
+    
     return 0;
 }
