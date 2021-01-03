@@ -6,6 +6,7 @@
 //
 
 #include "crossMarkDetector.hpp"
+#include <iostream>
 
 using namespace cv;
 
@@ -24,6 +25,15 @@ crossMarkDetector::~crossMarkDetector()
 void crossMarkDetector::feed(const Mat& img)
 {
 	assert(img.type() == CV_32FC1); //判断图片格式是否正确
+	
+	if (!signal) {
+		signal = true;
+		int val;
+		for (int i = 0; i < 328; i++) {
+			scanf_s("%d", &val);
+			scanf_s("%d %d %d", &linkTabel[val].mPos.x, &linkTabel[val].mPos.y, &linkTabel[val].dir);
+		}
+	}
 	findCrossPoint(img, crossPtsList);
 	buildMatrix(img, crossPtsList);
 
@@ -264,11 +274,12 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 
 	bool matrixVisit[1000];
 	memset(matrixVisit, false, sizeof(matrixVisit));
+	int keyMatrixValue = 0;
 
 	for (int label = 0; label < labelnum; label++)
 		for (int i = 0; i < crossPtsList.size(); i++) {
 			if (checkNinePatch(i, label, matrix[i].mPos.x, matrix[i].mPos.y, keyMatrix)) {
-				int keyMatrixValue = 0;
+				keyMatrixValue = 0;
 				int binary = 1;
 				for (int ib = 0; ib < 3; ib++)
 					for (int ia = 0; ia < 3; ia++) {
@@ -281,11 +292,25 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 				//printf("%d %d %d\n", matrix[i].mPos.x, matrix[i].mPos.y, keyMatrixValue);
 			}
 			
-			std::vector<linkTableInform> linkTabel(1024);
-			linkTabel[272].mPos = Point(10, 6);
-			linkTabel[272].dir =  { Point(0,-1),Point(1,0),Point(0,1),Point(-1,0) };
 			// 更新矩阵绝对坐标
-			matrix[i].mPos = linkTabel[272].mPos;
+			if (keyMatrixValue == 0) continue;
+			matrix[i].mPos = linkTabel[keyMatrixValue].mPos;
+			std::array<Point, 4> dir;
+			switch (linkTabel[keyMatrixValue].dir) {
+				case 0 :
+					dir = { Point(-1,0),Point(0,-1),Point(1,0),Point(0,1) };
+					break;
+				case 1:
+					dir = { Point(0,1),Point(-1,0),Point(0,-1),Point(1,0) };
+					break;
+				case 2:
+					dir = { Point(1,0),Point(0,1),Point(-1,0),Point(0,-1) };
+					break;
+				case 3:
+					dir = { Point(0,-1),Point(1,0),Point(0,1),Point(-1,0) };
+					break;
+				default:break;
+			}
 			std::vector<int> member;
 			member.push_back(i);
 			matrixVisit[i] = true;
@@ -299,7 +324,7 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 					if (crossPtsList[linkPt].Pos.x != crossPtsList[it].Pos.x)
 						angleAB = atan2(crossPtsList[linkPt].Pos.y - crossPtsList[it].Pos.y, crossPtsList[linkPt].Pos.x - crossPtsList[it].Pos.x) / CV_PI * 180 + 180;
 
-					matrix[linkPt].mPos = matrix[it].mPos + linkTabel[272].dir[angleAB / 90] ;
+					matrix[linkPt].mPos = matrix[it].mPos + dir[angleAB / 90] ;
 					member.push_back(linkPt);
 					matrixVisit[linkPt] = true;
 				}
