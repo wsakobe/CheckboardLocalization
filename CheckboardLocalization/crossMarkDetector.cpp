@@ -333,13 +333,10 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 					if (pixel[j] < minv)
 						minv = pixel[j];
 				}
-				finalPixel = (pixel[0] + pixel[1] + pixel[2] + pixel[3] + pixel[4] - minv - maxv) / 3;
 				distAngle(crossPtsList[i].subPos, crossPtsList[matrix2[label][matrix[i].mPos.x + 1][matrix[i].mPos.y]].subPos, dist, angle);
-				if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle) && finalPixel > 0.6) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
-				else if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle) && finalPixel < 0.4) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
-				else if (abs(crossPtsList[i].Bdirct - angle) > abs(crossPtsList[i].Wdirct - angle) && finalPixel < 0.55) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
-				else if (abs(crossPtsList[i].Bdirct - angle) > abs(crossPtsList[i].Wdirct - angle) && finalPixel > 0.6) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
-				else keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = -1;
+				if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle) && maxv > 0.55) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
+				else if (abs(crossPtsList[i].Bdirct - angle) > abs(crossPtsList[i].Wdirct - angle) && minv < 0.65) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
+				else keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
 				//printf("%d %d %d %d %.2f\n", label, matrix[i].mPos.x, matrix[i].mPos.y, keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y], finalPixel);
 			}
 
