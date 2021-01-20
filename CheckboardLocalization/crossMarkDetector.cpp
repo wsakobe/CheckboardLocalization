@@ -307,11 +307,10 @@ bool checkNinePatch(int label, int x, int y, int keyMatrix[10][100][100]) {
 std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, int matrix2[10][100][100], int labelnum, std::vector<Point>& centerpoint) {
 	float dist, angle;
 	Point2f pos1, pos2, pos3, centerPoint;
-	int binary = 1, keyValue = 0, keyMatrixValue, dire, angleAB_r[500], angleAB = 0;
-	float pixel[5], finalPixel;
+	int binary = 1, keyValue = 0, keyMatrixValue;
+	float pixel[5];
 	bool matrixVisit[500];
 	memset(keyMatrix, -1, sizeof(keyMatrix));
-	memset(angleAB_r, 0, sizeof(angleAB_r));
 
 	for (int label = 0; label < labelnum; label++)
 		for (int i = 0; i < crossPtsList.size(); i++)
@@ -361,86 +360,30 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 			
 			// 更新矩阵绝对坐标
 			if ((keyMatrixValue == 0) || (linkTabel[keyMatrixValue].mPos.x == -1)) continue;
+			Point relativeMatrixIndex = matrix[i].mPos;
 			matrix[i].mPos = linkTabel[keyMatrixValue].mPos;
-			std::vector<std::array<Point, 4>> dir(crossPtsList.size());
-			switch (linkTabel[keyMatrixValue].dir) {
-				case 0:
-					dir[i] = { Point(1,0),Point(0,-1),Point(-1,0),Point(0,1) };
-					break;
-				case 1:
-					dir[i] = { Point(0,-1),Point(-1,0),Point(0,1),Point(1,0) };
-					break;
-				case 2:
-					dir[i] = { Point(-1,0),Point(0,1),Point(1,0),Point(0,-1) };
-					break;
-				case 3:
-					dir[i] = { Point(0,1),Point(1,0),Point(0,-1),Point(-1,0) };
-					break;
-				default:break;
-			}
-			std::vector<int> member;
-			member.push_back(i);
 			matrixVisit[i] = true;
-			for (int ig = 0; ig < member.size(); ++ig) {
-				int it = member[ig];
-				for (int il = 0; il < 4; ++il) {
-					int linkPt = links[it].idx[il];
-					if (linkPt == -1 || matrixVisit[linkPt] || matrix[linkPt].mLabel != matrix[it].mLabel) continue;
-
-					if (crossPtsList[linkPt].Pos.x != crossPtsList[it].Pos.x)
-						angleAB = atan2(crossPtsList[linkPt].Pos.y - crossPtsList[it].Pos.y, crossPtsList[linkPt].Pos.x - crossPtsList[it].Pos.x) / CV_PI * 180;
-					else if (crossPtsList[linkPt].Pos.x < crossPtsList[it].Pos.x) angleAB = -90;
-					else angleAB = 90;
-
-					if (angleAB - angleAB_r[it] <= -45) {
-						if (angleAB - angleAB_r[it] > -135) {
-							dire = 1;
-							matrix[linkPt].mPos = matrix[it].mPos + dir[it][dire];
-							Point a = dir[it][0];
-							for (int i = 1; i < 4; i++)
-								dir[linkPt][i - 1] = dir[it][i];
-							dir[linkPt][3] = a;
-						}
-						else {
-							dire = 2;
-							matrix[linkPt].mPos = matrix[it].mPos + dir[it][dire];
-							Point a = dir[it][0];
-							Point b = dir[it][1];
-							for (int i = 2; i < 4; i++)
-								dir[linkPt][i - 2] = dir[it][i];
-							dir[linkPt][2] = a;
-							dir[linkPt][3] = b;
-						}
+			for (int j = 0; j < crossPtsList.size(); j++) {
+				if (!matrixVisit[j] && matrix[j].mLabel == matrix[i].mLabel) {
+					switch (linkTabel[keyMatrixValue].dir) {
+						case 0:
+							matrix[j].mPos.x = matrix[i].mPos.x + (matrix[j].mPos.x - relativeMatrixIndex.x);
+							matrix[j].mPos.y = matrix[i].mPos.y + (matrix[j].mPos.y - relativeMatrixIndex.y);
+							break;
+						case 1:
+							matrix[j].mPos.x = matrix[i].mPos.x - (matrix[j].mPos.y + relativeMatrixIndex.x);
+							matrix[j].mPos.y = matrix[i].mPos.y + (matrix[j].mPos.x - relativeMatrixIndex.y);
+							break;
+						case 2:
+							matrix[j].mPos.x = matrix[i].mPos.x - (matrix[j].mPos.x - relativeMatrixIndex.x);
+							matrix[j].mPos.y = matrix[i].mPos.y - (matrix[j].mPos.y - relativeMatrixIndex.y);
+							break;
+						case 3:
+							matrix[j].mPos.x = matrix[i].mPos.x - (matrix[j].mPos.x - relativeMatrixIndex.x);
+							matrix[j].mPos.y = matrix[i].mPos.y - (matrix[j].mPos.y - relativeMatrixIndex.y);
+							break;
 					}
-					else {
-						if (angleAB - angleAB_r[it] > 135) {
-							dire = 2;
-							matrix[linkPt].mPos = matrix[it].mPos + dir[it][dire];
-							Point a = dir[it][0];
-							Point b = dir[it][1];
-							for (int i = 2; i < 4; i++)
-								dir[linkPt][i - 2] = dir[it][i];
-							dir[linkPt][2] = a;
-							dir[linkPt][3] = b;
-						}
-						else if (angleAB - angleAB_r[it] < 45) {
-							dire = 0;
-							matrix[linkPt].mPos = matrix[it].mPos + dir[it][dire];
-							dir[linkPt] = dir[it];
-						}
-						else {
-							dire = 3;
-							matrix[linkPt].mPos = matrix[it].mPos + dir[it][dire];
-							Point a = dir[it][3];
-							for (int i = 3; i > 0; i--)
-								dir[linkPt][i] = dir[it][i - 1];
-							dir[linkPt][0] = a;
-						}
-					}
-
-					member.push_back(linkPt);
-					matrixVisit[linkPt] = true;
-					angleAB_r[linkPt] = angleAB;
+					matrixVisit[j] = true;
 				}
 			}
 			updateSuccess[label] = true;
