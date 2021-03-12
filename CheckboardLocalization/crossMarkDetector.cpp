@@ -6,6 +6,7 @@
 //
 
 #include "crossMarkDetector.hpp"
+#include <cstring>
 #include <iostream>
 
 using namespace cv;
@@ -311,6 +312,7 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 	float pixel[5];
 	bool matrixVisit[500];
 	memset(keyMatrix, -1, sizeof(keyMatrix));
+	//int coeff[4][]
 
 	for (int label = 0; label < labelnum; label++)
 		for (int i = 0; i < crossPtsList.size(); i++)
@@ -355,7 +357,7 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 					}
 				distAngle(crossPtsList[i].subPos, crossPtsList[matrix2[label][matrix[i].mPos.x + 1][matrix[i].mPos.y]].subPos, dist, angle);
 				if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle)) keyMatrixValue += binary;
-				//printf("%d %d %d %d\n", label, matrix[i].mPos.x, matrix[i].mPos.y, keyMatrixValue);
+				printf("%d %d %d %d\n", label, matrix[i].mPos.x, matrix[i].mPos.y, keyMatrixValue);
 			}
 			
 			// 更新矩阵绝对坐标
@@ -364,23 +366,24 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 			matrix[i].mPos = linkTabel[keyMatrixValue].mPos;
 			matrixVisit[i] = true;
 			for (int j = 0; j < crossPtsList.size(); j++) {
+				Point relativeIndex = matrix[j].mPos - relativeMatrixIndex;
 				if (!matrixVisit[j] && matrix[j].mLabel == matrix[i].mLabel) {
 					switch (linkTabel[keyMatrixValue].dir) {
 						case 0:
-							matrix[j].mPos.x = matrix[i].mPos.x + (matrix[j].mPos.x - relativeMatrixIndex.x);
-							matrix[j].mPos.y = matrix[i].mPos.y + (matrix[j].mPos.y - relativeMatrixIndex.y);
+							matrix[j].mPos.x = matrix[i].mPos.x + relativeIndex.x;
+							matrix[j].mPos.y = matrix[i].mPos.y + relativeIndex.y;
 							break;
 						case 1:
-							matrix[j].mPos.x = matrix[i].mPos.x - (matrix[j].mPos.y + relativeMatrixIndex.x);
-							matrix[j].mPos.y = matrix[i].mPos.y + (matrix[j].mPos.x - relativeMatrixIndex.y);
+							matrix[j].mPos.x = matrix[i].mPos.x - relativeIndex.y;
+							matrix[j].mPos.y = matrix[i].mPos.y + relativeIndex.x;
 							break;
 						case 2:
-							matrix[j].mPos.x = matrix[i].mPos.x - (matrix[j].mPos.x - relativeMatrixIndex.x);
-							matrix[j].mPos.y = matrix[i].mPos.y - (matrix[j].mPos.y - relativeMatrixIndex.y);
+							matrix[j].mPos.x = matrix[i].mPos.x - relativeIndex.x;
+							matrix[j].mPos.y = matrix[i].mPos.y - relativeIndex.y;
 							break;
 						case 3:
-							matrix[j].mPos.x = matrix[i].mPos.x - (matrix[j].mPos.x - relativeMatrixIndex.x);
-							matrix[j].mPos.y = matrix[i].mPos.y - (matrix[j].mPos.y - relativeMatrixIndex.y);
+							matrix[j].mPos.x = matrix[i].mPos.x + relativeIndex.y;
+							matrix[j].mPos.y = matrix[i].mPos.y - relativeIndex.x;
 							break;
 					}
 					matrixVisit[j] = true;
@@ -401,6 +404,7 @@ void crossMarkDetector::displayMatrix(const Mat& img, std::vector<pointInform>& 
 				line(imgMark, crossPtsList[links[it].idx[id]].Pos, crossPtsList[it].Pos, Scalar(0, 1, 0), 1);
 			}
 		}
+		circle(imgMark, crossPtsList[it].Pos, 3, Scalar(0, 0, 1));
 	}
 	for (int i = 0; i < 10; i++)
 		if (update[i])
@@ -419,7 +423,7 @@ void crossMarkDetector::displayMatrix(const Mat& img, std::vector<pointInform>& 
 		circle(imgMark, centerpoint[i], 1, Scalar(1, 0, 0));
 	
 	imshow("imgMark", imgMark);
-	imwrite("imgMark.bmp", 255 * imgMark);
+	imwrite("imgMark.bmp", 255 * imgMark);		
 }
 
 void crossMarkDetector::outputLists(std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, bool update[10]) {
@@ -427,7 +431,10 @@ void crossMarkDetector::outputLists(std::vector<pointInform>& crossPtsList, std:
 		if (update[b])
 			for (int i = 0; i < crossPtsList.size(); i++) {
 				if (matrix[i].mLabel == b)
-					printf("crosspoint_id:%d matrix_coordinate:%d %d matrix_label:%d sub-pixel_coordinate:%.3f %.3f\n", i, matrix[i].mPos.x, matrix[i].mPos.y, matrix[i].mLabel, crossPtsList[i].subPos.x, crossPtsList[i].subPos.y);
+					if (crossPtsList[i].subPos.x < 640)
+						printf("[left image] crosspoint_id:%d matrix_coordinate:%d %d matrix_label:%d sub-pixel_coordinate:%.3f %.3f\n", i, matrix[i].mPos.x, matrix[i].mPos.y, matrix[i].mLabel, crossPtsList[i].subPos.x, crossPtsList[i].subPos.y);
+					else
+						printf("[right image] crosspoint_id:%d matrix_coordinate:%d %d matrix_label:%d sub-pixel_coordinate:%.3f %.3f\n", i, matrix[i].mPos.x, matrix[i].mPos.y, matrix[i].mLabel, crossPtsList[i].subPos.x - 640.0, crossPtsList[i].subPos.y);
 			}
 }
 
