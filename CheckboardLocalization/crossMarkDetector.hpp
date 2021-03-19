@@ -12,6 +12,7 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/core.hpp>
+#include <opencv2/calib3d.hpp>
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -59,15 +60,17 @@ class crossMarkDetector
 private:
     crossPointResponder responder;           // 交叉点响应器
     std::vector<pointInform> crossPtsList;   // 交叉点存储数组
+    std::vector<Point2f> cartisian_dst;
     int  keyMatrix[10][100][100], matrix2[10][100][100];
     bool signal = false, updateSuccess[10];
     linkTableInform linkTabel[1024];
 
     void findCrossPoint(const Mat &img, std::vector<pointInform> &crossPtsList);                                                                       // 寻找交叉点(比响应器的结果多一轮非极大值抑制), 形成crossPtsList
     void buildMatrix(const Mat &img, std::vector<pointInform> &crossPtsList);                                                                          // 基于crossPtsList解读棋盘格信息, 改变mLabel和mPos
-    void displayMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, std::vector<Point>& centerpoint, bool update[10]);       // 显示最终结果
+    void displayMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, std::vector<Point>& centerpoint, bool update[10], std::vector<Point2f>& cartisian_dst);       // 显示最终结果
     std::vector<matrixInform> extractLinkTable(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, int matrix2[10][100][100], int labelnum, std::vector<Point>& centerpoint); // 提取LinkTable信息，获得Bias
     void outputLists(std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, bool update[10]);
+    void hydraCode(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10]);
 
     std::vector<std::vector<int>> buildNeighbors(const std::vector<pointInform> &crossPtsList, int r);
     // 基于边长2*r+1, 为crossPtsList中的所有点生成近邻索引
@@ -76,7 +79,7 @@ private:
     
     void distAngle(const Point2f A, const Point2f B, float &dist, float &angle); // 计算两点连线的距离和角度,左上0°顺时针
     bool checkIncludedAngle(const float A, const float B, const float T); // 判断两个角度的夹角是否在阈值T以内
-
+   
 public:
     crossMarkDetectorParams Dparams;    // 标记图案检测器的参数
     crossPointResponderParams Rparams;  // 交叉点响应器的参数

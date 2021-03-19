@@ -32,7 +32,7 @@ Mat R = (Mat_<double>(3, 3) << 0.999685749875707, -0.0205805033034650, 0.0143123
     -0.0144627554340543, -0.00717623445586060, 0.999869656687455);//R 旋转矩阵
 
 int main(int argc, char* argv[]) {
-    const char* imagename = "./img/03.bmp";//此处为测试图片路径
+    const char* imagename = "./imgor1.jpg";//此处为测试图片路径
     FILE* stream1;
     freopen_s(&stream1, "linkTabel.txt", "r", stdin);
     
@@ -40,8 +40,8 @@ int main(int argc, char* argv[]) {
         0, imageSize, &validROIL, &validROIR);
     initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
     initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
-    /*
-    VideoCapture capture1(1);
+    
+    VideoCapture capture1(0);
     capture1 >> img1;
     VideoCapture capture2(2);
     capture2 >> img2;
@@ -56,7 +56,7 @@ int main(int argc, char* argv[]) {
   
     crossMarkDetectorParams Dparams;
     Dparams.height = img1.rows;
-    Dparams.width = img1.cols * 2;
+    Dparams.width = img1.cols;
     crossPointResponderParams Rparams;
     crossMarkDetector filter(Dparams, Rparams);
     
@@ -75,6 +75,10 @@ int main(int argc, char* argv[]) {
         cvtColor(img2, img2, COLOR_BGR2GRAY);
         img2.convertTo(img2, CV_32FC1); img2 = img2 / 255;
 
+        img1.copyTo(img_stereo(Range(0, img1.rows), Range(0, img1.cols)));
+        img2.copyTo(img_stereo(Range(0, img1.rows), Range(img1.cols, img1.cols * 2)));
+        imwrite("imgor.bmp", 255 * img_stereo);
+
         remap(img1, img1, mapLx, mapLy, INTER_LINEAR);
         remap(img2, img2, mapRx, mapRy, INTER_LINEAR);
 
@@ -82,12 +86,13 @@ int main(int argc, char* argv[]) {
         img1.copyTo(img_stereo(Range(0, img1.rows), Range(0, img1.cols)));
         img2.copyTo(img_stereo(Range(0, img1.rows), Range(img1.cols, img1.cols * 2)));
         
+        imwrite("imgst.bmp", 255 * img_stereo);
         //棋盘格提取
-        filter.feed(img_stereo);
+        filter.feed(img1);
 
         waitKey(1);
     } 
-        */
+    /*
     // 处理单幅图片
     Mat img = imread(imagename);
     cvtColor(img, img, COLOR_BGR2GRAY);
@@ -99,7 +104,7 @@ int main(int argc, char* argv[]) {
     crossPointResponderParams Rparams;
 
     crossMarkDetector filter(Dparams, Rparams);
-    filter.feed(img);
+    filter.feed(img);*/
    
     waitKey(0);
     
