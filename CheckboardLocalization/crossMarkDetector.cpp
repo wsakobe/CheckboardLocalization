@@ -293,7 +293,7 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 	}
 	matrix = extractLinkTable(img, crossPtsList, matrix, links, matrix2, labelNum, centerpoint);
 	hydraCode(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess);
-	//displayMatrix(img, crossPtsList, matrix, links, centerpoint, updateSuccess, cartisian_dst);
+	displayMatrix(img, crossPtsList, matrix, links, centerpoint, updateSuccess, cartisian_dst);
 	outputLists(crossPtsList, matrix, updateSuccess);
 }
 
@@ -331,10 +331,10 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 				pixel[2] = img.at<float>((int)centerPoint.y - 1, (int)centerPoint.x);
 				pixel[3] = img.at<float>((int)centerPoint.y + 1, (int)centerPoint.x);
 				pixel[4] = img.at<float>((int)centerPoint.y, (int)centerPoint.x + 1);
-				//mid_pixel[0] = img.at<float>(((int)pos1.x + (int)centerPoint.x) / 2, ((int)pos1.y + (int)centerPoint.y) / 2);
-				//mid_pixel[1] = img.at<float>((int)(pos2.x * 0.7 + centerPoint.x * 0.3), (int)(pos2.y * 0.7 + centerPoint.y * 0.3));
-				//mid_pixel[2] = img.at<float>((int)(pos3.x * 0.7 + centerPoint.x * 0.3), (int)(pos3.y * 0.7 + centerPoint.y * 0.3));
-				//mid_pixel[3] = img.at<float>((int)(crossPtsList[i].subPos.x * 0.8 + centerPoint.x * 0.2), (int)(crossPtsList[i].subPos.y * 0.8 + centerPoint.y * 0.2));
+				mid_pixel[0] = img.at<float>(((int)pos1.y * 0.8 + (int)centerPoint.y * 0.2), ((int)pos1.x * 0.8 + (int)centerPoint.x * 0.2));
+				mid_pixel[1] = img.at<float>((int)(pos2.y * 0.7 + centerPoint.y * 0.3), (int)(pos2.x * 0.7 + centerPoint.x * 0.3));
+				mid_pixel[2] = img.at<float>((int)(pos3.y * 0.7 + centerPoint.y * 0.3), (int)(pos3.x * 0.7 + centerPoint.x * 0.3));
+				mid_pixel[3] = img.at<float>((int)(crossPtsList[i].subPos.y * 0.8 + centerPoint.x * 0.2), (int)(crossPtsList[i].subPos.x * 0.8 + centerPoint.x * 0.2));
 				float maxv = 0, minv = 1;
 				for (int j = 0; j <= 4; j++) {
 					if (pixel[j] > maxv)
@@ -342,33 +342,32 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 					if (pixel[j] < minv)
 						minv = pixel[j];
 				}
-				/*float mid_maxv = 0, mid_minv = 1;
+				float mid_maxv = 0, mid_minv = 1;
 				for (int j = 0; j < 4; j++) {
 					if (mid_pixel[j] > mid_maxv)
 						mid_maxv = mid_pixel[j];
 					if (mid_pixel[j] < mid_minv)
 						mid_minv = mid_pixel[j];
-				}*/
+				}
 				distAngle(crossPtsList[i].subPos, crossPtsList[matrix2[label][matrix[i].mPos.x + 1][matrix[i].mPos.y]].subPos, dist, angle);
-				/*if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle)) {
+				
+				if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle)) {
 					if (maxv - mid_minv > 0.25) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
-					else if (maxv - mid_minv < 0) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
+					else if (maxv - mid_minv < 0.05) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
 					else keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = -1;
 				}
 				else if (mid_maxv - minv > 0.25) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
-					else if (mid_maxv - minv < 0) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
-					else keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = -1;
-				if ((matrix[i].mPos.x + matrix[i].mPos.y) % 2) printf("%d %d %d %.2f %.2f %.2f %.2f %.2f\n", label, matrix[i].mPos.x, matrix[i].mPos.y, maxv - mid_minv, maxv, minv, mid_maxv, mid_minv);
-				else printf("%d %d %d %.2f %.2f %.2f %.2f %.2f\n", label, matrix[i].mPos.x, matrix[i].mPos.y, mid_maxv - minv, maxv, minv, mid_maxv, mid_minv);
-				*/
-				if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle))
-					if (maxv > 0.5) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
-					else if (maxv < 0.3) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
-					else keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = -1;
-				if (abs(crossPtsList[i].Bdirct - angle) >= abs(crossPtsList[i].Wdirct - angle))
-					if (minv < 0.55) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
-					else if (minv > 0.65) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
-					else keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = -1;
+				else if (mid_maxv - minv < 0.05) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
+				else keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = -1;
+								
+				if (keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] == -1) {
+					if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle))
+						if (maxv > 0.5) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
+						else if (maxv < 0.3) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
+					if (abs(crossPtsList[i].Bdirct - angle) >= abs(crossPtsList[i].Wdirct - angle))
+						if (minv < 0.55) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
+						else if (minv > 0.65) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
+				}
 			}
 
 	memset(matrixVisit, false, sizeof(matrixVisit));
