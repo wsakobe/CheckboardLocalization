@@ -61,10 +61,10 @@ private:
     crossPointResponder responder;           // 交叉点响应器
     std::vector<pointInform> crossPtsList;   // 交叉点存储数组
     std::vector<Point2f> cartisian_dst;
-    int  keyMatrix[10][100][100], matrix2[10][100][100];
+    int  keyMatrix[10][100][100], matrix2[10][100][100], cnt = 0;
     bool signal = false, updateSuccess[10];
     linkTableInform linkTabel[1024];
-
+   
     void findCrossPoint(const Mat &img, std::vector<pointInform> &crossPtsList);                                                                       // 寻找交叉点(比响应器的结果多一轮非极大值抑制), 形成crossPtsList
     void buildMatrix(const Mat &img, std::vector<pointInform> &crossPtsList);                                                                          // 基于crossPtsList解读棋盘格信息, 改变mLabel和mPos
     void displayMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, std::vector<Point>& centerpoint, bool update[10], std::vector<Point2f>& cartisian_dst);       // 显示最终结果

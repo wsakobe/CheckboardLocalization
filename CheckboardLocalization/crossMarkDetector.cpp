@@ -36,9 +36,6 @@ void crossMarkDetector::feed(const Mat& img)
 	}
 	findCrossPoint(img, crossPtsList);
 	buildMatrix(img, crossPtsList);
-
-	//    imwrite("img.bmp",255*img);
-	//    imwrite("imgMark.bmp",255*imgMark);
 }
 
 void crossMarkDetector::findCrossPoint(const Mat& img, std::vector<pointInform>& crossPtsList)
@@ -294,7 +291,7 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 	matrix = extractLinkTable(img, crossPtsList, matrix, links, matrix2, labelNum, centerpoint);
 	hydraCode(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess);
 	displayMatrix(img, crossPtsList, matrix, links, centerpoint, updateSuccess, cartisian_dst);
-	outputLists(crossPtsList, matrix, updateSuccess);
+	//outputLists(crossPtsList, matrix, updateSuccess);
 }
 
 bool checkLattice(int label, int x, int y, int matrix2[10][100][100]) {
@@ -362,11 +359,11 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 								
 				if (keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] == -1) {
 					if (abs(crossPtsList[i].Bdirct - angle) < abs(crossPtsList[i].Wdirct - angle))
-						if (maxv > 0.5) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
+						if (maxv > 0.7) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
 						else if (maxv < 0.3) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
 					if (abs(crossPtsList[i].Bdirct - angle) >= abs(crossPtsList[i].Wdirct - angle))
-						if (minv < 0.55) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
-						else if (minv > 0.65) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
+						if (minv < 0.45) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 1;
+						else if (minv > 0.7) keyMatrix[label][matrix[i].mPos.x][matrix[i].mPos.y] = 0;
 				}
 			}
 
@@ -411,6 +408,7 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 void crossMarkDetector::displayMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, std::vector<Point>& centerpoint, bool update[10], std::vector<Point2f>& cartisian_dst) {
 	Mat imgMark(Dparams.height, Dparams.width, CV_32FC3);
 	cvtColor(img, imgMark, COLOR_GRAY2RGB);
+	
 	for (int it = 0; it < crossPtsList.size(); ++it) {
 		for (int id = 0; id < 4; ++id) {
 			if (links[it].idx[id] != -1) {
@@ -419,19 +417,20 @@ void crossMarkDetector::displayMatrix(const Mat& img, std::vector<pointInform>& 
 		}
 		circle(imgMark, crossPtsList[it].Pos, 3, Scalar(0, 0, 1));
 	}
+
 	for (int i = 0; i < 10; i++)
 		if (update[i])
 			for (int it = 0; it < crossPtsList.size(); ++it) 
 				if (matrix[it].mLabel == i){
-					//        String label(std::to_string(it));
-					//        putText(imgMark, label, crossPtsList[it].Pos+Point(5,-5), FONT_ITALIC, 0.3, Scalar(0,0,1),1);
+					//String label(std::to_string(it));
+					//putText(imgMark, label, crossPtsList[it].Pos+Point(5,-5), FONT_ITALIC, 0.3, Scalar(0,0,1),1);
 					String label;
 					label.append(std::to_string(matrix[it].mPos.x));
 					label.append(",");
 					label.append(std::to_string(matrix[it].mPos.y));
 					putText(imgMark, label, crossPtsList[it].Pos, FONT_ITALIC, 0.3, Scalar(0, 0, 1), 1);
 				}
-
+	
 	for (int i = 0; i < centerpoint.size(); i++)
 		circle(imgMark, centerpoint[i], 1, Scalar(1, 0, 0));
 	
