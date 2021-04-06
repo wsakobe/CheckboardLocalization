@@ -35,7 +35,8 @@ void crossMarkDetector::feed(const Mat& img)
 		}
 	}
 	findCrossPoint(img, crossPtsList);
-	buildMatrix(img, crossPtsList);
+	//buildMatrix(img, crossPtsList);
+	displayMatrix_crosspoint(img, crossPtsList);
 }
 
 void crossMarkDetector::findCrossPoint(const Mat& img, std::vector<pointInform>& crossPtsList)
@@ -403,6 +404,15 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 			break;
 		}
 	return matrix;
+}
+
+void crossMarkDetector::displayMatrix_crosspoint(const Mat& img, std::vector<pointInform>& crossPtsList) {
+	Mat imgMark(Dparams.height, Dparams.width, CV_32FC3);
+	cvtColor(img, imgMark, COLOR_GRAY2RGB);
+	for (int it = 0; it < crossPtsList.size(); ++it) {
+		circle(imgMark, crossPtsList[it].Pos, 3, Scalar(0, 0, 1));
+	}
+	imshow("imgMark", imgMark);
 }
 
 void crossMarkDetector::displayMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, std::vector<Point>& centerpoint, bool update[10], std::vector<Point2f>& cartisian_dst) {

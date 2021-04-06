@@ -42,8 +42,7 @@ int main(int argc, char* argv[]) {
   //      0, imageSize, &validROIL, &validROIR);
   //  initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
   //  initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
-    /*
-   // imageCapture(img1);
+    
     VideoCapture capture1(0);
     capture1 >> img1;
    // VideoCapture capture2(2);
@@ -67,8 +66,7 @@ int main(int argc, char* argv[]) {
         capture1 >> img1;
       //  capture2 >> img2;
 
-        if (img1.empty() || img2.empty()) {
-            break;
+        if (img1.empty()/* || img2.empty()*/) {
             fprintf(stderr, "Can not load image %s\n", imagename);
             return -1;
         }
@@ -96,7 +94,7 @@ int main(int argc, char* argv[]) {
 
         waitKey(1);
     } 
-    */
+    /*
     // ´¦Àíµ¥·ùÍ¼Æ¬
     Mat img = imread(imagename);
     cvtColor(img, img, COLOR_BGR2GRAY);
@@ -110,7 +108,7 @@ int main(int argc, char* argv[]) {
     crossMarkDetector filter(Dparams, Rparams);
     filter.feed(img);
    
-    waitKey(0);
+    waitKey(0);*/
     
     return 0;
 }
