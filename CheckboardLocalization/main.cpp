@@ -32,15 +32,17 @@ Mat R = (Mat_<double>(3, 3) << 0.999685749875707, -0.0205805033034650, 0.0143123
     -0.0144627554340543, -0.00717623445586060, 0.999869656687455);//R 旋转矩阵
 
 int main(int argc, char* argv[]) {
-    const char* imagename = "./test.jpg";//此处为测试图片路径
+    const char* imagename = "./Registration/11.jpg";//此处为测试图片路径
     FILE* stream1;
+    FILE* stream2;
     freopen_s(&stream1, "linkTabel.txt", "r", stdin);
+    freopen_s(&stream2, "./Registration/11.txt", "w", stdout);
     
   //  stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, R, T, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY,
   //      0, imageSize, &validROIL, &validROIR);
   //  initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
   //  initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
-    
+    /*
    // imageCapture(img1);
     VideoCapture capture1(0);
     capture1 >> img1;
@@ -65,7 +67,7 @@ int main(int argc, char* argv[]) {
         capture1 >> img1;
       //  capture2 >> img2;
 
-        if (img1.empty()/* || img2.empty()*/) {
+        if (img1.empty() || img2.empty()) {
             break;
             fprintf(stderr, "Can not load image %s\n", imagename);
             return -1;
@@ -94,7 +96,7 @@ int main(int argc, char* argv[]) {
 
         waitKey(1);
     } 
-    /*
+    */
     // 处理单幅图片
     Mat img = imread(imagename);
     cvtColor(img, img, COLOR_BGR2GRAY);
@@ -108,7 +110,7 @@ int main(int argc, char* argv[]) {
     crossMarkDetector filter(Dparams, Rparams);
     filter.feed(img);
    
-    waitKey(0);*/
+    waitKey(0);
     
     return 0;
 }

@@ -291,7 +291,7 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 	matrix = extractLinkTable(img, crossPtsList, matrix, links, matrix2, labelNum, centerpoint);
 	hydraCode(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess);
 	displayMatrix(img, crossPtsList, matrix, links, centerpoint, updateSuccess, cartisian_dst);
-	//outputLists(crossPtsList, matrix, updateSuccess);
+	outputLists(crossPtsList, matrix, updateSuccess);
 }
 
 bool checkLattice(int label, int x, int y, int matrix2[10][100][100]) {
@@ -443,10 +443,10 @@ void crossMarkDetector::outputLists(std::vector<pointInform>& crossPtsList, std:
 		if (update[b])
 			for (int i = 0; i < crossPtsList.size(); i++) {
 				if (matrix[i].mLabel == b)
-					if (crossPtsList[i].subPos.x < Dparams.width / 2)
-						printf("[left image] crosspoint_id:%d matrix_coordinate:%d %d matrix_label:%d sub-pixel_coordinate:%.3f %.3f\n", i, matrix[i].mPos.x, matrix[i].mPos.y, matrix[i].mLabel, crossPtsList[i].subPos.x, crossPtsList[i].subPos.y);
-					else
-						printf("[right image] crosspoint_id:%d matrix_coordinate:%d %d matrix_label:%d sub-pixel_coordinate:%.3f %.3f\n", i, matrix[i].mPos.x, matrix[i].mPos.y, matrix[i].mLabel, crossPtsList[i].subPos.x - 640.0, crossPtsList[i].subPos.y);
+					//if (crossPtsList[i].subPos.x < Dparams.width / 2)
+						printf("matrix_coordinate:%d sub-pixel_coordinate:%.3f %.3f\n", (matrix[i].mPos.x - 1) * 11 + matrix[i].mPos.y, crossPtsList[i].subPos.x, crossPtsList[i].subPos.y);
+					//else
+					//	printf("[right image] crosspoint_id:%d matrix_coordinate:%d %d matrix_label:%d sub-pixel_coordinate:%.3f %.3f\n", i, matrix[i].mPos.x, matrix[i].mPos.y, matrix[i].mLabel, crossPtsList[i].subPos.x - 640.0, crossPtsList[i].subPos.y);
 			}
 }
 
