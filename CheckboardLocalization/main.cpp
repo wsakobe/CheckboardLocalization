@@ -1,11 +1,15 @@
 #include "crossMarkDetector.hpp"
+#include <stdio.h>
+#include <process.h>
+#include <conio.h>
+#include "mvcameracontrol.h"
 
 using namespace std;
 using namespace cv;
 
 Mat img, img1, img2, img_stereo;
 
-const int imageWidth = 640;                             //摄像头的分辨率  
+const int imageWidth = 640;  //摄像头的分辨率  
 const int imageHeight = 480;
 Size imageSize = Size(imageWidth, imageHeight);
 
@@ -31,72 +35,85 @@ Mat R = (Mat_<double>(3, 3) << 0.999685749875707, -0.0205805033034650, 0.0143123
     0.0204751117383895, 0.999762444054992, 0.00747163010927865,
     -0.0144627554340543, -0.00717623445586060, 0.999869656687455);//R 旋转矩阵
 
+void* handle = NULL;
+
+void prepareImageRead(int nRet, void* handle);
+cv::Mat Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData);
+
 int main(int argc, char* argv[]) {
-    const char* imagename = "./Registration/11.jpg";//此处为测试图片路径
+    const char* imagename = "MatImage.bmp";//此处为测试图片路径
     FILE* stream1;
     FILE* stream2;
     freopen_s(&stream1, "linkTabel.txt", "r", stdin);
-    freopen_s(&stream2, "./Registration/11.txt", "w", stdout);
     
-  //  stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, R, T, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY,
-  //      0, imageSize, &validROIL, &validROIR);
-  //  initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
-  //  initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
+    stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, R, T, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY,
+        0, imageSize, &validROIL, &validROIR);
+    initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
+    initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
     
     VideoCapture capture1(0);
-    capture1 >> img1;
-   // VideoCapture capture2(2);
-   // capture2 >> img2;
+    VideoCapture capture2(2);
 
-    //转换为灰度图
-    cvtColor(img1, img1, COLOR_BGR2GRAY);
-    img1.convertTo(img1, CV_32FC1); img1 = img1 / 255;
-   // cvtColor(img2, img2, COLOR_BGR2GRAY);
-   // img2.convertTo(img2, CV_32FC1); img2 = img2 / 255;
-
-    //img_stereo.create(img1.rows, img1.cols * 2, CV_32FC1);
-    
     crossMarkDetectorParams Dparams;
-    Dparams.height = img1.rows;
-    Dparams.width = img1.cols;
+    Dparams.height = imageHeight;
+    Dparams.width = imageWidth;
     crossPointResponderParams Rparams;
     crossMarkDetector filter(Dparams, Rparams);
     
+    /*int nRet = MV_OK;
+    prepareImageRead(nRet, handle);
+    MV_FRAME_OUT stImageInfo = { 0 };
+    MV_DISPLAY_FRAME_INFO stDisplayInfo = { 0 };*/
+
     while (true){
+       /* nRet = MV_CC_GetImageBuffer(handle, &stImageInfo, 1000);
+        if (nRet == MV_OK)
+        {
+            printf("Get Image Buffer: Width[%d], Height[%d], FrameNum[%d]\n",
+                stImageInfo.stFrameInfo.nWidth, stImageInfo.stFrameInfo.nHeight, stImageInfo.stFrameInfo.nFrameNum);
+
+            img1 = Convert2Mat(&stImageInfo.stFrameInfo, stImageInfo.pBufAddr);*/
         capture1 >> img1;
-      //  capture2 >> img2;
 
-        if (img1.empty()/* || img2.empty()*/) {
-            fprintf(stderr, "Can not load image %s\n", imagename);
-            return -1;
+            if (img1.empty() /*|| img2.empty()*/) {
+                fprintf(stderr, "Can not load image %s\n", imagename);
+                return -1;
+            }
+
+            //转换为灰度图
+            cvtColor(img1, img1, COLOR_BGR2GRAY);
+            img1.convertTo(img1, CV_32FC1); img1 = img1 / 255;
+            /*cvtcolor(img2, img2, color_bgr2gray);
+            img2.convertto(img2, cv_32fc1); img2 = img2 / 255;
+
+            img1.copyto(img_stereo(range(0, img1.rows), range(0, img1.cols)));
+            img2.copyto(img_stereo(range(0, img1.rows), range(img1.cols, img1.cols * 2)));
+            imwrite("imgor.bmp", 255 * img_stereo);
+
+            remap(img1, img1, maplx, maply, inter_linear);
+            remap(img2, img2, maprx, mapry, inter_linear);
+
+            合并成一幅图
+            img1.copyto(img_stereo(range(0, img1.rows), range(0, img1.cols)));
+            img2.copyto(img_stereo(range(0, img1.rows), range(img1.cols, img1.cols * 2)));
+
+            imwrite("imgst.bmp", 255 * img1);*/
+            //棋盘格提取
+            filter.feed(img1);
+
+            waitKey(1);
+            //cv::imshow("MatImage", imgMark);
+
+           /* nRet = MV_CC_FreeImageBuffer(handle, &stImageInfo);
         }
-
-        //转换为灰度图
-        cvtColor(img1, img1, COLOR_BGR2GRAY);
-        img1.convertTo(img1, CV_32FC1); img1 = img1 / 255;
-     //   cvtColor(img2, img2, COLOR_BGR2GRAY);
-     //   img2.convertTo(img2, CV_32FC1); img2 = img2 / 255;
-
-     //   img1.copyTo(img_stereo(Range(0, img1.rows), Range(0, img1.cols)));
-      //  img2.copyTo(img_stereo(Range(0, img1.rows), Range(img1.cols, img1.cols * 2)));
-      //  imwrite("imgor.bmp", 255 * img_stereo);
-
-      //  remap(img1, img1, mapLx, mapLy, INTER_LINEAR);
-      //  remap(img2, img2, mapRx, mapRy, INTER_LINEAR);
-
-        //合并成一幅图
-       // img1.copyTo(img_stereo(Range(0, img1.rows), Range(0, img1.cols)));
-       // img2.copyTo(img_stereo(Range(0, img1.rows), Range(img1.cols, img1.cols * 2)));
-        
-        //imwrite("imgst.bmp", 255 * img_stereo);
-        //棋盘格提取
-        filter.feed(img1);
-
-        waitKey(1);
+        else
+        {
+            printf("Get Image fail! nRet [0x%x]\n", nRet);
+        }*/
     } 
-    /*
+    
     // 处理单幅图片
-    Mat img = imread(imagename);
+    /*Mat img = imread(imagename);
     cvtColor(img, img, COLOR_BGR2GRAY);
     img.convertTo(img, CV_32FC1); img = img / 255;
       
@@ -106,14 +123,14 @@ int main(int argc, char* argv[]) {
     crossPointResponderParams Rparams;
 
     crossMarkDetector filter(Dparams, Rparams);
-    filter.feed(img);
+    filter.feed(img);*/
    
-    waitKey(0);*/
+    waitKey(0);
     
     return 0;
 }
-/*
-// print the discovered devices information to user
+
+//HikVision工业相机读取
 bool PrintDeviceInfo(MV_CC_DEVICE_INFO* pstMVDevInfo)
 {
     if (NULL == pstMVDevInfo)
@@ -128,7 +145,7 @@ bool PrintDeviceInfo(MV_CC_DEVICE_INFO* pstMVDevInfo)
         int nIp3 = ((pstMVDevInfo->SpecialInfo.stGigEInfo.nCurrentIp & 0x0000ff00) >> 8);
         int nIp4 = (pstMVDevInfo->SpecialInfo.stGigEInfo.nCurrentIp & 0x000000ff);
 
-        // print current ip and user defined name
+        // ch:打印当前相机ip和用户自定义名字 | en:print current ip and user defined name
         printf("CurrentIp: %d.%d.%d.%d\n", nIp1, nIp2, nIp3, nIp4);
         printf("UserDefinedName: %s\n\n", pstMVDevInfo->SpecialInfo.stGigEInfo.chUserDefinedName);
     }
@@ -167,7 +184,7 @@ int RGB2BGR(unsigned char* pRgbData, unsigned int nWidth, unsigned int nHeight)
 }
 
 // convert data stream in Mat format
-bool Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData)
+cv::Mat Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData)
 {
     cv::Mat srcImage;
     if (pstImageInfo->enPixelType == PixelType_Gvsp_Mono8)
@@ -179,40 +196,17 @@ bool Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData)
         RGB2BGR(pData, pstImageInfo->nWidth, pstImageInfo->nHeight);
         srcImage = cv::Mat(pstImageInfo->nHeight, pstImageInfo->nWidth, CV_8UC3, pData);
     }
-    else
-    {
-        printf("unsupported pixel format\n");
-        return false;
-    }
 
-    if (NULL == srcImage.data)
-    {
-        return false;
-    }
+    cv::waitKey(20);
 
-    //save converted image in a local file
-    try {
-        cv::imwrite("./MatImage.bmp", srcImage);
-        cv::imshow("MatImage.bmp", srcImage);
-    }
-    catch (cv::Exception& ex) {
-        fprintf(stderr, "Exception saving image to bmp format: %s\n", ex.what());
-    }
-
-    srcImage.release();
-
-    return true;
+    return srcImage;
 }
 
-void imageCapture(Mat img) {
-    int nRet = MV_OK;
-    void* handle = NULL;
-
+void prepareImageRead(int nRet, void* handle) {
     do
     {
-        // Enum device
-        MV_CC_DEVICE_INFO_LIST stDeviceList;
-        memset(&stDeviceList, 0, sizeof(MV_CC_DEVICE_INFO_LIST));
+        // ch:枚举设备 | en:Enum device
+        MV_CC_DEVICE_INFO_LIST stDeviceList = { 0 };
         nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDeviceList);
         if (MV_OK != nRet)
         {
@@ -239,19 +233,17 @@ void imageCapture(Mat img) {
             break;
         }
 
-        unsigned int nFormat = 0;
-
-        // select device to connect
         printf("Please Input camera index(0-%d):", stDeviceList.nDeviceNum - 1);
         unsigned int nIndex = 0;
-        scanf("%d", &nIndex);
+        //scanf_s("%d", &nIndex);
+
         if (nIndex >= stDeviceList.nDeviceNum)
         {
             printf("Input error!\n");
             break;
         }
 
-        // Select device and create handle
+        // ch:选择设备并创建句柄 | en:Select device and create handle
         nRet = MV_CC_CreateHandle(&handle, stDeviceList.pDeviceInfo[nIndex]);
         if (MV_OK != nRet)
         {
@@ -259,7 +251,7 @@ void imageCapture(Mat img) {
             break;
         }
 
-        // open device
+        // ch:打开设备 | en:Open device
         nRet = MV_CC_OpenDevice(handle);
         if (MV_OK != nRet)
         {
@@ -267,7 +259,7 @@ void imageCapture(Mat img) {
             break;
         }
 
-        // Detection network optimal package size(It only works for the GigE camera)
+        // ch:探测网络最佳包大小(只对GigE相机有效) | en:Detection network optimal package size(It only works for the GigE camera)
         if (stDeviceList.pDeviceInfo[nIndex]->nTLayerType == MV_GIGE_DEVICE)
         {
             int nPacketSize = MV_CC_GetOptimalPacketSize(handle);
@@ -284,8 +276,8 @@ void imageCapture(Mat img) {
                 printf("Warning: Get Packet Size fail nRet [0x%x]!", nPacketSize);
             }
         }
-        
-        // Set trigger mode as off
+
+        // ch:设置触发模式为off | en:Set trigger mode as off
         nRet = MV_CC_SetEnumValue(handle, "TriggerMode", 0);
         if (MV_OK != nRet)
         {
@@ -293,18 +285,7 @@ void imageCapture(Mat img) {
             break;
         }
 
-        // Get payload size
-        MVCC_INTVALUE stParam;
-        memset(&stParam, 0, sizeof(MVCC_INTVALUE));
-        nRet = MV_CC_GetIntValue(handle, "PayloadSize", &stParam);
-        if (MV_OK != nRet)
-        {
-            printf("Get PayloadSize fail! nRet [0x%x]\n", nRet);
-            break;
-        }
-        g_nPayloadSize = stParam.nCurValue;
-
-        // Start grab image
+        // ch:开始取流 | en:Start grab image
         nRet = MV_CC_StartGrabbing(handle);
         if (MV_OK != nRet)
         {
@@ -312,72 +293,29 @@ void imageCapture(Mat img) {
             break;
         }
 
-        MV_FRAME_OUT_INFO_EX stImageInfo = { 0 };
-        memset(&stImageInfo, 0, sizeof(MV_FRAME_OUT_INFO_EX));
-        unsigned char* pData = (unsigned char*)malloc(sizeof(unsigned char) * (g_nPayloadSize));
-        if (pData == NULL)
-        {
-            printf("Allocate memory failed.\n");
-            break;
-        }
+        //// ch:停止取流 | en:Stop grab image
+        //nRet = MV_CC_StopGrabbing(handle);
+        //if (MV_OK != nRet)
+        //{
+        //    printf("Stop Grabbing fail! nRet [0x%x]\n", nRet);
+        //    break;
+        //}
 
-        // get one frame from camera with timeout=1000ms
-        nRet = MV_CC_GetOneFrameTimeout(handle, pData, g_nPayloadSize, &stImageInfo, 1000);
-        if (nRet == MV_OK)
-        {
-            printf("Get One Frame: Width[%d], Height[%d], nFrameNum[%d]\n",
-                stImageInfo.nWidth, stImageInfo.nHeight, stImageInfo.nFrameNum);
-        }
-        else
-        {
-            printf("No data[0x%x]\n", nRet);
-            free(pData);
-            pData = NULL;
-            break;
-        }
+        //// ch:关闭设备 | Close device
+        //nRet = MV_CC_CloseDevice(handle);
+        //if (MV_OK != nRet)
+        //{
+        //    printf("ClosDevice fail! nRet [0x%x]\n", nRet);
+        //    break;
+        //}
 
-        // 数据去转换
-        bool bConvertRet = false;
-        bConvertRet = Convert2Mat(&stImageInfo, pData);
-
-        // print result
-        if (bConvertRet)
-        {
-            printf("OpenCV format convert finished.\n");
-            free(pData);
-            pData = NULL;
-        }
-        else
-        {
-            printf("OpenCV format convert failed.\n");
-            free(pData);
-            pData = NULL;
-            break;
-        }
-
-        // Stop grab image
-        nRet = MV_CC_StopGrabbing(handle);
-        if (MV_OK != nRet)
-        {
-            printf("Stop Grabbing fail! nRet [0x%x]\n", nRet);
-            break;
-        }
-
-        // Close device
-        nRet = MV_CC_CloseDevice(handle);
-        if (MV_OK != nRet)
-        {
-            printf("ClosDevice fail! nRet [0x%x]\n", nRet);
-            break;
-        }
-
-        // Destroy handle
-        nRet = MV_CC_DestroyHandle(handle);
-        if (MV_OK != nRet)
-        {
-            printf("Destroy Handle fail! nRet [0x%x]\n", nRet);
-            break;
-        }
+        //// ch:销毁句柄 | Destroy handle
+        //nRet = MV_CC_DestroyHandle(handle);
+        //if (MV_OK != nRet)
+        //{
+        //    printf("Destroy Handle fail! nRet [0x%x]\n", nRet);
+        //    break;
+        //}
     } while (0);
 
     if (nRet != MV_OK)
@@ -389,6 +327,5 @@ void imageCapture(Mat img) {
         }
     }
 
-    return 0;
+    return ;
 }
-*/

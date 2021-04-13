@@ -35,8 +35,8 @@ void crossMarkDetector::feed(const Mat& img)
 		}
 	}
 	findCrossPoint(img, crossPtsList);
-	//buildMatrix(img, crossPtsList);
-	displayMatrix_crosspoint(img, crossPtsList);
+	buildMatrix(img, crossPtsList);
+	//displayMatrix_crosspoint(img, crossPtsList);
 }
 
 void crossMarkDetector::findCrossPoint(const Mat& img, std::vector<pointInform>& crossPtsList)
@@ -48,6 +48,7 @@ void crossMarkDetector::findCrossPoint(const Mat& img, std::vector<pointInform>&
 		for (curPos.x = Rparams.maskR; curPos.x < Dparams.width - Rparams.maskR; ++curPos.x) {
 
 			responder.feed(img, curPos);
+			
 			if (!responder.response_haveCrossPt) continue;
 			if (responder.response_crossPos.x < Rparams.maskR || responder.response_crossPos.x >= Dparams.width - Rparams.maskR)   continue;
 			if (responder.response_crossPos.y < Rparams.maskR || responder.response_crossPos.y >= Dparams.height - Rparams.maskR)  continue;
@@ -290,7 +291,7 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 		}
 	}
 	matrix = extractLinkTable(img, crossPtsList, matrix, links, matrix2, labelNum, centerpoint);
-	hydraCode(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess);
+	//hydraCode(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess);
 	displayMatrix(img, crossPtsList, matrix, links, centerpoint, updateSuccess, cartisian_dst);
 	outputLists(crossPtsList, matrix, updateSuccess);
 }
@@ -324,15 +325,15 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 				pos3 = crossPtsList[matrix2[label][matrix[i].mPos.x + 1][matrix[i].mPos.y + 1]].subPos;
 				centerPoint = (pos1 + pos2 + pos3 + crossPtsList[i].subPos) / 4;
 				centerpoint.push_back(Point((int)centerPoint.x, (int)centerPoint.y));
-				pixel[0] = img.at<float>((int)centerPoint.y, (int)centerPoint.x);
-				pixel[1] = img.at<float>((int)centerPoint.y, (int)centerPoint.x - 1);
-				pixel[2] = img.at<float>((int)centerPoint.y - 1, (int)centerPoint.x);
-				pixel[3] = img.at<float>((int)centerPoint.y + 1, (int)centerPoint.x);
-				pixel[4] = img.at<float>((int)centerPoint.y, (int)centerPoint.x + 1);
-				mid_pixel[0] = img.at<float>(((int)pos1.y * 0.8 + (int)centerPoint.y * 0.2), ((int)pos1.x * 0.8 + (int)centerPoint.x * 0.2));
-				mid_pixel[1] = img.at<float>((int)(pos2.y * 0.7 + centerPoint.y * 0.3), (int)(pos2.x * 0.7 + centerPoint.x * 0.3));
-				mid_pixel[2] = img.at<float>((int)(pos3.y * 0.7 + centerPoint.y * 0.3), (int)(pos3.x * 0.7 + centerPoint.x * 0.3));
-				mid_pixel[3] = img.at<float>((int)(crossPtsList[i].subPos.y * 0.8 + centerPoint.x * 0.2), (int)(crossPtsList[i].subPos.x * 0.8 + centerPoint.x * 0.2));
+				pixel[0] = img.ptr<float>((int)centerPoint.y)[(int)centerPoint.x];
+				pixel[1] = img.ptr<float>((int)centerPoint.y)[(int)centerPoint.x - 1];
+				pixel[2] = img.ptr<float>((int)centerPoint.y - 1)[(int)centerPoint.x];
+				pixel[3] = img.ptr<float>((int)centerPoint.y + 1)[(int)centerPoint.x];
+				pixel[4] = img.ptr<float>((int)centerPoint.y)[(int)centerPoint.x + 1];
+				mid_pixel[0] = img.ptr<float>((int)(pos1.y * 0.7 + centerPoint.y * 0.3))[(int)(pos1.x * 0.7 + (int)centerPoint.x * 0.3)];
+				mid_pixel[1] = img.ptr<float>((int)(pos2.y * 0.7 + centerPoint.y * 0.3))[(int)(pos2.x * 0.7 + centerPoint.x * 0.3)];
+				mid_pixel[2] = img.ptr<float>((int)(pos3.y * 0.7 + centerPoint.y * 0.3))[(int)(pos3.x * 0.7 + centerPoint.x * 0.3)];
+				mid_pixel[3] = img.ptr<float>((int)(crossPtsList[i].subPos.y * 0.7 + centerPoint.x * 0.3))[(int)(crossPtsList[i].subPos.x * 0.7 + centerPoint.x * 0.3)];
 				float maxv = 0, minv = 1;
 				for (int j = 0; j <= 4; j++) {
 					if (pixel[j] > maxv)

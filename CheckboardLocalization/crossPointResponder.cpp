@@ -106,8 +106,9 @@ crossPointResponder::~crossPointResponder()
 bool crossPointResponder::checkPointCheck(const Mat &img, Point curPos)
 {
     // 寄存到checkVal
-    for (int it=0; it<8; ++it) {
-        checkVal[it] = img.at<float>(curPos.y + checkOff[it].y, curPos.x + checkOff[it].x);
+    for (int it = 0; it < 8; ++it) {
+        checkVal[it] = img.ptr<float>(curPos.y + checkOff[it].y)[curPos.x + checkOff[it].x];
+       // checkVal[it] = img.at<float>(curPos.y + checkOff[it].y, curPos.x + checkOff[it].x);
     }
     // 判断间隙条件
     float maxGap = -1;
@@ -130,7 +131,7 @@ bool  crossPointResponder::contourCheck(const Mat& img, Point curPos)
     // 计算边框均值
     float frameMean = 0;
     for (int it = 0; it < maskFL; ++it) {
-        frameVal[it] = img.at<float>(curPos.y + frameOff[it].y, curPos.x + frameOff[it].x);
+        frameVal[it] = img.ptr<float>(curPos.y + frameOff[it].y)[curPos.x + frameOff[it].x];
         frameMean = frameMean + frameVal[it];
     }
     frameMean = frameMean / maskFL;
@@ -277,7 +278,7 @@ void crossPointResponder::feed(const Mat& img, Point curPos)
     if (!checkPointCheck(img, curPos)) return;
     if (!contourCheck(img, curPos))    return;
     if (!maskCheck(img, curPos))       return;
-    
+
     response_haveCrossPt = 1;
 
     response_blackLine = crossLineEndsAngle[0] - 45;
