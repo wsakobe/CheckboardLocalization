@@ -9,8 +9,8 @@ using namespace cv;
 
 Mat img, img1, img2, img_stereo;
 
-const int imageWidth = 640;  //摄像头的分辨率  
-const int imageHeight = 480;
+const int imageWidth = 1920;  //摄像头的分辨率  
+const int imageHeight = 1200;
 Size imageSize = Size(imageWidth, imageHeight);
 
 Rect validROIL;//图像校正之后，会对图像进行裁剪，这里的validROI就是指裁剪之后的区域  
@@ -41,7 +41,7 @@ void prepareImageRead(int nRet, void* handle);
 cv::Mat Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData);
 
 int main(int argc, char* argv[]) {
-    const char* imagename = "MatImage.bmp";//此处为测试图片路径
+    const char* imagename = "0.bmp";//此处为测试图片路径
     FILE* stream1;
     FILE* stream2;
     freopen_s(&stream1, "linkTabel.txt", "r", stdin);
@@ -51,69 +51,98 @@ int main(int argc, char* argv[]) {
     initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
     initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
     
-    VideoCapture capture1(0);
+    /*VideoCapture capture1(0);
     VideoCapture capture2(2);
 
     crossMarkDetectorParams Dparams;
     Dparams.height = imageHeight;
     Dparams.width = imageWidth;
     crossPointResponderParams Rparams;
-    crossMarkDetector filter(Dparams, Rparams);
+    crossMarkDetector filter(Dparams, Rparams);*/
     
     /*int nRet = MV_OK;
     prepareImageRead(nRet, handle);
     MV_FRAME_OUT stImageInfo = { 0 };
     MV_DISPLAY_FRAME_INFO stDisplayInfo = { 0 };*/
 
-    while (true){
-       /* nRet = MV_CC_GetImageBuffer(handle, &stImageInfo, 1000);
-        if (nRet == MV_OK)
-        {
-            printf("Get Image Buffer: Width[%d], Height[%d], FrameNum[%d]\n",
-                stImageInfo.stFrameInfo.nWidth, stImageInfo.stFrameInfo.nHeight, stImageInfo.stFrameInfo.nFrameNum);
+    //while (true){
+    //    nRet = MV_CC_GetImageBuffer(handle, &stImageInfo, 1000);
+    //    if (nRet == MV_OK)
+    //    {
+    //        printf("Get Image Buffer: Width[%d], Height[%d], FrameNum[%d]\n",
+    //            stImageInfo.stFrameInfo.nWidth, stImageInfo.stFrameInfo.nHeight, stImageInfo.stFrameInfo.nFrameNum);
 
-            img1 = Convert2Mat(&stImageInfo.stFrameInfo, stImageInfo.pBufAddr);*/
-        capture1 >> img1;
+    //        img1 = Convert2Mat(&stImageInfo.stFrameInfo, stImageInfo.pBufAddr);
+    //    capture1 >> img1;
 
-            if (img1.empty() /*|| img2.empty()*/) {
-                fprintf(stderr, "Can not load image %s\n", imagename);
-                return -1;
-            }
+    //        if (img1.empty() /*|| img2.empty()*/) {
+    //            fprintf(stderr, "Can not load image %s\n", imagename);
+    //            return -1;
+    //        }
 
-            //转换为灰度图
-            cvtColor(img1, img1, COLOR_BGR2GRAY);
-            img1.convertTo(img1, CV_32FC1); img1 = img1 / 255;
-            /*cvtcolor(img2, img2, color_bgr2gray);
-            img2.convertto(img2, cv_32fc1); img2 = img2 / 255;
+    //        //转换为灰度图
+    //        cvtColor(img1, img1, COLOR_BGR2GRAY);
+    //        img1.convertTo(img1, CV_32FC1); img1 = img1 / 255;
+    //        /*cvtcolor(img2, img2, color_bgr2gray);
+    //        img2.convertto(img2, cv_32fc1); img2 = img2 / 255;
 
-            img1.copyto(img_stereo(range(0, img1.rows), range(0, img1.cols)));
-            img2.copyto(img_stereo(range(0, img1.rows), range(img1.cols, img1.cols * 2)));
-            imwrite("imgor.bmp", 255 * img_stereo);
+    //        img1.copyto(img_stereo(range(0, img1.rows), range(0, img1.cols)));
+    //        img2.copyto(img_stereo(range(0, img1.rows), range(img1.cols, img1.cols * 2)));
+    //        imwrite("imgor.bmp", 255 * img_stereo);
 
-            remap(img1, img1, maplx, maply, inter_linear);
-            remap(img2, img2, maprx, mapry, inter_linear);
+    //        remap(img1, img1, maplx, maply, inter_linear);
+    //        remap(img2, img2, maprx, mapry, inter_linear);
 
-            合并成一幅图
-            img1.copyto(img_stereo(range(0, img1.rows), range(0, img1.cols)));
-            img2.copyto(img_stereo(range(0, img1.rows), range(img1.cols, img1.cols * 2)));
+    //        合并成一幅图
+    //        img1.copyto(img_stereo(range(0, img1.rows), range(0, img1.cols)));
+    //        img2.copyto(img_stereo(range(0, img1.rows), range(img1.cols, img1.cols * 2)));
 
-            imwrite("imgst.bmp", 255 * img1);*/
-            //棋盘格提取
-            filter.feed(img1);
+    //        imwrite("imgst.bmp", 255 * img1);*/
+    //        //棋盘格提取
+    //        filter.feed(img1);
 
-            waitKey(1);
-            //cv::imshow("MatImage", imgMark);
+    //        waitKey(1);
+    //        //cv::imshow("MatImage", imgMark);
 
-           /* nRet = MV_CC_FreeImageBuffer(handle, &stImageInfo);
-        }
-        else
-        {
-            printf("Get Image fail! nRet [0x%x]\n", nRet);
-        }*/
-    } 
+    //       /* nRet = MV_CC_FreeImageBuffer(handle, &stImageInfo);
+    //    }
+    //    else
+    //    {
+    //        printf("Get Image fail! nRet [0x%x]\n", nRet);
+    //    }*/
+    //} 
     
+    //处理视频流
+   /* VideoCapture capture;
+    Mat img;
+    img = capture.open("test_video.avi");
+    if (!capture.isOpened())
+    {
+        printf("can not open ...\n");
+        return -1;
+    }
+    int cnt = 0;
+    capture.read(img);
+    crossMarkDetectorParams Dparams;
+    Dparams.height = img.rows;
+    Dparams.width = img.cols;
+    crossPointResponderParams Rparams;
+
+    crossMarkDetector filter(Dparams, Rparams);
+
+    while (capture.read(img)) {
+        cvtColor(img, img, COLOR_BGR2GRAY);
+        img.convertTo(img, CV_32FC1); img = img / 255;
+
+        
+        filter.feed(img, cnt++);
+        waitKey(1);
+    }
+    */
+
+
     // 处理单幅图片
-    /*Mat img = imread(imagename);
+    Mat img = imread(imagename);
     cvtColor(img, img, COLOR_BGR2GRAY);
     img.convertTo(img, CV_32FC1); img = img / 255;
       
@@ -123,7 +152,7 @@ int main(int argc, char* argv[]) {
     crossPointResponderParams Rparams;
 
     crossMarkDetector filter(Dparams, Rparams);
-    filter.feed(img);*/
+    filter.feed(img, 1);
    
     waitKey(0);
     

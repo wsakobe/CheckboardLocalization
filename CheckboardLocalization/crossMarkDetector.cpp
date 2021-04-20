@@ -23,19 +23,19 @@ crossMarkDetector::~crossMarkDetector()
 {
 }
 
-void crossMarkDetector::feed(const Mat& img)
+void crossMarkDetector::feed(const Mat& img, int cnt)
 {
 	assert(img.type() == CV_32FC1); //判断图片格式是否正确
 	if (!signal) {
 		signal = true;
 		int val;
-		for (int i = 0; i < 400; i++) {
+		for (int i = 0; i < 624; i++) {
 			scanf_s("%d", &val);
 			scanf_s("%d %d %d", &linkTabel[val].mPos.x, &linkTabel[val].mPos.y, &linkTabel[val].dir);
 		}
 	}
 	findCrossPoint(img, crossPtsList);
-	buildMatrix(img, crossPtsList);
+	buildMatrix(img, crossPtsList, cnt);
 	//displayMatrix_crosspoint(img, crossPtsList);
 }
 
@@ -199,7 +199,7 @@ std::vector<linkInform> crossMarkDetector::buildLinkers(std::vector<pointInform>
 	return links;
 }
 
-void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& crossPtsList)
+void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, int cnt)
 {
 	// 建立连接
 	std::vector<linkInform> links = buildLinkers(crossPtsList, Dparams.maxSupportAngle);
@@ -209,18 +209,18 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 	memset(matrix2, -1, sizeof(matrix2));
 	std::vector<std::array<Point, 4>> dict(crossPtsList.size()); // 方向传递
 	memset(updateSuccess, false, sizeof(updateSuccess));
-	int labelNum = 0, angleAB = 180, angleAB_r[500], dir;
-	memset(angleAB_r, 0, sizeof(angleAB_r));
+	int labelNum = 0, angleAB = 180, dir;
 
 	for (int io = 0; io < crossPtsList.size(); ++io) {
 		// 准备矩阵起始点
 		if (matrix[io].mLabel != -1) continue;
-		matrix[io].mPos = Point(10, 10);
+		matrix[io].mPos = Point(20, 20);
 		matrix[io].mLabel = labelNum;
 		dict[io] = { Point(-1,0),Point(0,-1),Point(1,0),Point(0,1) };
 		++labelNum;
 		std::vector<int> member;
 		member.push_back(io);
+
 		// 生长
 		for (int ig = 0; ig < member.size(); ++ig) {
 			int it = member[ig];
@@ -286,12 +286,11 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 				matrix[linkPt].mLabel = matrix[it].mLabel;
 				matrix2[labelNum - 1][matrix[linkPt].mPos.x][matrix[linkPt].mPos.y] = linkPt;
 				member.push_back(linkPt);
-				angleAB_r[linkPt] = angleAB;
 			}
 		}
 	}
 	matrix = extractLinkTable(img, crossPtsList, matrix, links, matrix2, labelNum, centerpoint);
-	//hydraCode(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess);
+	//hydraCode(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
 	displayMatrix(img, crossPtsList, matrix, links, centerpoint, updateSuccess, cartisian_dst);
 	outputLists(crossPtsList, matrix, updateSuccess);
 }
@@ -392,7 +391,7 @@ std::vector<matrixInform> crossMarkDetector::extractLinkTable(const Mat& img, st
 			if ((keyMatrixValue == 0) || (linkTabel[keyMatrixValue].mPos.x == -1)) continue;
 			Point relativeMatrixIndex = matrix[i].mPos;
 			matrix[i].mPos = linkTabel[keyMatrixValue].mPos;
-			matrixVisit[i] = true;
+			matrixVisit[i] = true; 
 			for (int j = 0; j < crossPtsList.size(); j++) {
 				Point relativeIndex = matrix[j].mPos - relativeMatrixIndex;
 				if (!matrixVisit[j] && matrix[j].mLabel == matrix[i].mLabel) {
@@ -461,16 +460,26 @@ void crossMarkDetector::outputLists(std::vector<pointInform>& crossPtsList, std:
 			}
 }
 
-void crossMarkDetector::hydraCode(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10]) {
+void crossMarkDetector::hydraCode(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt) {
 	std::vector<Point2f> srcPoints;
 	std::vector<Point2f> dstPoints;
 	std::vector<Point2f> cartisian_src(3);
+	std::vector<Point3f> world_coordination;
 
 	Mat imgMark(Dparams.height, Dparams.width, CV_32FC3);
 	cvtColor(img, imgMark, COLOR_GRAY2RGB);
 
-	int labelnow = 0;
-	cartisian_src[0] = Point2f(6, 6); cartisian_src[1] = Point2f(6, 9); cartisian_src[2] = Point2f(9, 6);
+	std::vector<Mat> Rs_decomp, ts_decomp, normals_decomp;
+
+	int labelnow = 0, solutions = 0;
+	Mat cameraMatrixL = (Mat_<double>(3, 3) << 2172.48948, 0, 959.08255,
+		0, 2170.17424, 500.958956284701,
+		0, 0, 1); 
+	Mat distCoeffL = (Mat_<double>(5, 1) << 0.139395252589193, -0.157734461777669, 0.00000, 0.00000, 0.00000);
+	float squareLength = 0.02;
+	float length = 4 * squareLength;
+
+	cartisian_src[0] = Point2f(7.5, 7); cartisian_src[1] = Point2f(7.5, 10); cartisian_src[2] = Point2f(10.5, 7);
 
 	while (labelnow != labelnum) {
 		if (!update[labelnow]) {
@@ -481,18 +490,106 @@ void crossMarkDetector::hydraCode(const Mat& img, std::vector<pointInform>& cros
 		dstPoints.clear();
 		for (int i = 0; i < crossPtsList.size(); i++)
 			if (matrix[i].mLabel == labelnow) {
-				srcPoints.push_back(matrix[i].mPos);
+				srcPoints.push_back(Point2f((float)matrix[i].mPos.x * 0.020, (float)matrix[i].mPos.y * 0.020));
 				dstPoints.push_back(crossPtsList[i].subPos);
 			}
+		undistortPoints(dstPoints, dstPoints, cameraMatrixL, distCoeffL);
 		Mat H = findHomography(srcPoints, dstPoints, RANSAC);
 		if (!H.empty()) {
-			perspectiveTransform(cartisian_src, cartisian_dst, H);
-			arrowedLine(imgMark, cartisian_dst[0], cartisian_dst[1], Scalar(255, 0, 0), 3, 8);
-			arrowedLine(imgMark, cartisian_dst[0], cartisian_dst[2], Scalar(0, 255, 0), 3, 8);
+			//perspectiveTransform(cartisian_src, cartisian_dst, H);
+			//arrowedLine(imgMark, cartisian_dst[0], cartisian_dst[1], Scalar(255, 0, 0), 3, 8);
+			//arrowedLine(imgMark, cartisian_dst[0], cartisian_dst[2], Scalar(0, 255, 0), 3, 8);
+
+			//decompose
+
+			double norm = sqrt(H.at<double>(0, 0) * H.at<double>(0, 0) +
+				H.at<double>(1, 0) * H.at<double>(1, 0) +
+				H.at<double>(2, 0) * H.at<double>(2, 0));
+
+			H /= norm;
+
+			Mat c1 = H.col(0);
+			Mat c2 = H.col(1);
+			Mat c3 = c1.cross(c2);
+
+			Mat tvec = H.col(2);
+			Mat R(3, 3, CV_64F);
+
+			for (int i = 0; i < 3; i++)
+			{
+				R.at<double>(i, 0) = c1.at<double>(i, 0);
+				R.at<double>(i, 1) = c2.at<double>(i, 0);
+				R.at<double>(i, 2) = c3.at<double>(i, 0);
+			}
+
+			Mat W, U, Vt;
+			SVDecomp(R, W, U, Vt);
+			R = U * Vt;
+			std::cout << "R (after polar decomposition):\n" << R << "\ndet(R): " << determinant(R) << std::endl;
+			std::cout << tvec << std::endl;
+
+			//display pose
+			Mat rvec;
+			Rodrigues(R, rvec);
+
+			Point3f CenterPoint = Point3f(7.5 * squareLength - length / 2, 7 * squareLength - length / 2, 0);
+			// project axes points
+			std::vector<Point3f> axesPoints;
+			axesPoints.push_back(Point3f(0, 0, 0) + CenterPoint);
+			axesPoints.push_back(Point3f(length, 0, 0) + CenterPoint);
+			axesPoints.push_back(Point3f(0, length, 0) + CenterPoint);
+			axesPoints.push_back(Point3f(0, 0, -length) + CenterPoint);
+			axesPoints.push_back(Point3f(0, length, -length) + CenterPoint);
+			axesPoints.push_back(Point3f(length, 0, -length) + CenterPoint);
+			axesPoints.push_back(Point3f(length, length, 0) + CenterPoint);
+			axesPoints.push_back(Point3f(length, length, -length) + CenterPoint);
+			std::vector<Point2f> imagePoints;
+			projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
+
+			// draw axes lines
+			circle(imgMark, imagePoints[0], 5, Scalar(0, 255, 0));
+			line(imgMark, imagePoints[0], imagePoints[1], Scalar(255, 0, 0), 3);
+			line(imgMark, imagePoints[0], imagePoints[2], Scalar(255, 0, 0), 3);
+			line(imgMark, imagePoints[0], imagePoints[3], Scalar(255, 0, 0), 3);
+			line(imgMark, imagePoints[2], imagePoints[4], Scalar(255, 0, 0), 3);
+			line(imgMark, imagePoints[2], imagePoints[6], Scalar(255, 0, 0), 3);
+			line(imgMark, imagePoints[3], imagePoints[4], Scalar(255, 0, 0), 3);
+			line(imgMark, imagePoints[3], imagePoints[5], Scalar(255, 0, 0), 3);
+			line(imgMark, imagePoints[1], imagePoints[5], Scalar(255, 0, 0), 3);
+			line(imgMark, imagePoints[1], imagePoints[6], Scalar(255, 0, 0), 3);
+			line(imgMark, imagePoints[7], imagePoints[4], Scalar(255, 0, 0), 3);
+			line(imgMark, imagePoints[7], imagePoints[6], Scalar(255, 0, 0), 3);
+			line(imgMark, imagePoints[7], imagePoints[5], Scalar(255, 0, 0), 3);
+			//imshow("Pose from coplanar points", imgMark);
+		
+
+
+			/*solutions = decomposeHomographyMat(H, cameraMatrixL, Rs_decomp, ts_decomp, normals_decomp);
+			std::cout << "Decompose homography matrix estimated by findHomography():" << std::endl << std::endl;
+			for (int i = 0; i < solutions; i++)
+			{
+				Mat cartisian_test1 = (Mat_<double>(3, 1) << 7.5 * 20, 7 * 20, 0);
+				Rs_decomp[i] = Rs_decomp[i].t();
+				cartisian_test1 = Rs_decomp[i] * cartisian_test1 + ts_decomp[i];
+				std::cout << "Solution " << i << ":" << std::endl;
+				std::cout << "R " << Rs_decomp[i] << std::endl << std::endl;
+				std::cout << "World Coordination: " << cartisian_test1 << std::endl << std::endl;
+				cartisian_test1 = cameraMatrixL * cartisian_test1;
+				std::cout << "Camera Coordination: " << cartisian_test1 << std::endl << std::endl;
+				std::cout << normals_decomp[i] << std::endl;
+
+				cv::Point2f point_camera(cartisian_test1.at<double>(0, 0) / cartisian_test1.at<double>(2, 0), cartisian_test1.at<double>(1, 0) / cartisian_test1.at<double>(2, 0));
+				std::cout << point_camera << std::endl;
+			}*/
+
 		}
+
 		labelnow++;
 	}
 	imshow("imgMark", imgMark);
+	char str[100];
+	sprintf_s(str, "./img/%d%s", cnt, ".bmp");
+	imwrite(str, 255 * imgMark);
 }
 
 void crossMarkDetector::distAngle(const Point2f A, const Point2f B, float& dist, float& angle)
