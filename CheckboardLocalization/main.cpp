@@ -41,7 +41,7 @@ void prepareImageRead(int nRet, void* handle);
 cv::Mat Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData);
 
 int main(int argc, char* argv[]) {
-    const char* imagename = "0.bmp";//此处为测试图片路径
+    const char* imagename = "124.bmp";//此处为测试图片路径
     FILE* stream1;
     FILE* stream2;
     freopen_s(&stream1, "linkTabel.txt", "r", stdin);
@@ -113,7 +113,7 @@ int main(int argc, char* argv[]) {
     //} 
     
     //处理视频流
-   /* VideoCapture capture;
+    /*VideoCapture capture;
     Mat img;
     img = capture.open("test_video.avi");
     if (!capture.isOpened())
@@ -134,11 +134,10 @@ int main(int argc, char* argv[]) {
         cvtColor(img, img, COLOR_BGR2GRAY);
         img.convertTo(img, CV_32FC1); img = img / 255;
 
-        
         filter.feed(img, cnt++);
         waitKey(1);
-    }
-    */
+    }*/
+    
 
 
     // 处理单幅图片
