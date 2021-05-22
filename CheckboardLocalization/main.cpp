@@ -41,10 +41,10 @@ void prepareImageRead(int nRet, void* handle);
 cv::Mat Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData);
 
 int main(int argc, char* argv[]) {
-    const char* imagename = "124.bmp";//此处为测试图片路径
-    FILE* stream1;
+    const char* imagename = "02_reg.jpg";//此处为测试图片路径
+    //FILE* stream1;
     FILE* stream2;
-    freopen_s(&stream1, "linkTabel.txt", "r", stdin);
+    //freopen_s(&stream1, "linkTabel.txt", "r", stdin);
     
     stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, R, T, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY,
         0, imageSize, &validROIL, &validROIR);
@@ -133,13 +133,10 @@ int main(int argc, char* argv[]) {
     while (capture.read(img)) {
         cvtColor(img, img, COLOR_BGR2GRAY);
         img.convertTo(img, CV_32FC1); img = img / 255;
-
         filter.feed(img, cnt++);
         waitKey(1);
     }*/
     
-
-
     // 处理单幅图片
     Mat img = imread(imagename);
     cvtColor(img, img, COLOR_BGR2GRAY);
@@ -152,7 +149,26 @@ int main(int argc, char* argv[]) {
 
     crossMarkDetector filter(Dparams, Rparams);
     filter.feed(img, 1);
-   
+
+    //Test
+    /*freopen_s(&stream2, "./RandomCrossPointBlur/Blur2/result11.txt", "w", stdout);
+    char imagename_test[100];
+    for (int i = 1; i <= 1000; i++) {
+        sprintf_s(imagename_test, "./RandomCrossPointBlur/Blur2/%d%s", i, ".bmp");
+        
+        Mat img = imread(imagename_test);
+        cvtColor(img, img, COLOR_BGR2GRAY);
+        img.convertTo(img, CV_32FC1); img = img / 255;
+
+        crossMarkDetectorParams Dparams;
+        Dparams.height = img.rows;
+        Dparams.width = img.cols;
+        crossPointResponderParams Rparams;
+
+        crossMarkDetector filter(Dparams, Rparams);
+        filter.feed(img, 1);
+    }*/
+    
     waitKey(0);
     
     return 0;
