@@ -19,37 +19,16 @@ Rect validROIR;
 Mat mapLx, mapLy, mapRx, mapRy;     //映射表  
 Mat Rl, Rr, Pl, Pr, Q;              //校正旋转矩阵R，投影矩阵P 重投影矩阵Q
 
-Mat cameraMatrixL = (Mat_<double>(3, 3) << 802.701207888995, 0, 622.575207525117,
-    0, 800.420237559492, 395.903381579618,
-    0, 0, 1);
-Mat distCoeffL = (Mat_<double>(5, 1) << 0.139395252589193, -0.157734461777669, 0.00000, 0.00000, 0.00000);
-
-Mat cameraMatrixR = (Mat_<double>(3, 3) << 799.315400747869, 0, 636.395903640885,
-    0, 798.192031709909, 387.126770053478,
-    0, 0, 1);
-Mat distCoeffR = (Mat_<double>(5, 1) << 0.126360293112346, -0.133870292188476, 0.00000, 0.00000, 0.00000);
-
-Mat T = (Mat_<double>(3, 1) << -133.333218739670, -1.09804644225190, 2.23322531078641);//T平移向量
-//Mat rec = (Mat_<double>(3, 1) << -0.00306, -0.03207, 0.00206);//rec旋转向量
-Mat R = (Mat_<double>(3, 3) << 0.999685749875707, -0.0205805033034650, 0.0143123855181751,
-    0.0204751117383895, 0.999762444054992, 0.00747163010927865,
-    -0.0144627554340543, -0.00717623445586060, 0.999869656687455);//R 旋转矩阵
-
 void* handle = NULL;
 
 void prepareImageRead(int nRet, void* handle);
 cv::Mat Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData);
 
 int main(int argc, char* argv[]) {
-    const char* imagename = "02_reg.jpg";//此处为测试图片路径
+    const char* imagename = "./Data/left/03.jpg";//此处为测试图片路径
     //FILE* stream1;
-    FILE* stream2;
+    //FILE* stream2;
     //freopen_s(&stream1, "linkTabel.txt", "r", stdin);
-    
-    stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, R, T, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY,
-        0, imageSize, &validROIL, &validROIR);
-    initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
-    initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
     
     /*VideoCapture capture1(0);
     VideoCapture capture2(2);
@@ -115,7 +94,7 @@ int main(int argc, char* argv[]) {
     //处理视频流
     /*VideoCapture capture;
     Mat img;
-    img = capture.open("test_video.avi");
+    img = capture.open("test_video2.avi");
     if (!capture.isOpened())
     {
         printf("can not open ...\n");
@@ -133,12 +112,15 @@ int main(int argc, char* argv[]) {
     while (capture.read(img)) {
         cvtColor(img, img, COLOR_BGR2GRAY);
         img.convertTo(img, CV_32FC1); img = img / 255;
+        char str[100];
+        sprintf_s(str, "./img_origin/%d%s", cnt, ".bmp");
+        imwrite(str, 255 * img);
         filter.feed(img, cnt++);
         waitKey(1);
     }*/
     
     // 处理单幅图片
-    Mat img = imread(imagename);
+    /*Mat img = imread(imagename);
     cvtColor(img, img, COLOR_BGR2GRAY);
     img.convertTo(img, CV_32FC1); img = img / 255;
       
@@ -148,7 +130,38 @@ int main(int argc, char* argv[]) {
     crossPointResponderParams Rparams;
 
     crossMarkDetector filter(Dparams, Rparams);
-    filter.feed(img, 1);
+    filter.feed(img, 1);*/
+
+    //处理双目视图
+    const char* imagename_stereo_left = "./Data/left/03.jpg";
+    const char* imagename_stereo_right = "./Data/right/03.jpg";
+    
+    stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, Rot, Trans, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY, 0, imageSize, &validROIL, &validROIR);
+    initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
+    initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
+    
+    Mat img1 = imread(imagename_stereo_left);
+    Mat img2 = imread(imagename_stereo_right);
+    cvtColor(img1, img1, COLOR_BGR2GRAY);
+    img1.convertTo(img1, CV_32FC1); img1 = img1 / 255;
+    cvtColor(img2, img2, COLOR_BGR2GRAY);
+    img2.convertTo(img2, CV_32FC1); img2 = img2 / 255;
+    remap(img1, img1, mapLx, mapLy, INTER_LINEAR);
+    remap(img2, img2, mapRx, mapRy, INTER_LINEAR);
+    
+    vector<Mat>vImgs;
+    vImgs.push_back(img1);
+    vImgs.push_back(img2);
+    hconcat(vImgs, img_stereo);
+
+    crossMarkDetectorParams Dparams;
+    Dparams.height = img_stereo.rows;
+    Dparams.width = img_stereo.cols;
+    crossPointResponderParams Rparams;
+    imwrite("img_stereo.bmp", img_stereo * 255);
+
+    crossMarkDetector filter(Dparams, Rparams);
+    filter.feed(img_stereo, 1);
 
     //Test
     /*freopen_s(&stream2, "./RandomCrossPointBlur/Blur2/result11.txt", "w", stdout);

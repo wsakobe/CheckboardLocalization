@@ -18,12 +18,27 @@
 
 #include "crossPointResponder.hpp"
 
+//相机标定参数！！
+const Mat cameraMatrixL = (Mat_<double>(3, 3) << 2177.19085685241, 2.50300520705354, 987.043784480210,
+    0, 2172.17693250848, 614.654598960330,
+    0, 0, 1);
+const Mat distCoeffL = (Mat_<double>(5, 1) << -0.128653266353462, 0.0990289902922354, -0.00151693364889492, -0.0000778074982959638, -0.0537249117228832);
+const Mat cameraMatrixR = (Mat_<double>(3, 3) << 2173.01163988693, 2.53683057527207, 993.749976335397,
+    0, 2168.79494943487, 610.888340207888,
+    0, 0, 1);
+const Mat distCoeffR = (Mat_<double>(5, 1) << -0.157813985137686, 0.147713412836913, 0.000225063584088769, 0.000749605380378634, 0.151790070856550);
+
+const Mat Trans = (Mat_<double>(3, 1) << 50.4393564634767, -0.723403549240724, -0.405551487570464);
+const Mat Rot = (Mat_<double>(3, 3) << 0.999966026847095, -0.00808560125461077, -0.00160256169534288,
+    0.00808368826277052, 0.999966610493402, -0.00119661288970822,
+    0.00161218352128088, 0.00118361762782855, 0.999997999954802);
+
 using namespace cv;
 
 struct crossMarkDetectorParams
 {
     int height, width;        // 图像的预期尺寸
-    int maxMatrixR = 30;     // 棋盘格点的最大间隔
+    int maxMatrixR = 35;     // 棋盘格点的最大间隔
     int maxSupportAngle = 15; // 支持者判定中的最大夹角
 };
 
@@ -71,13 +86,16 @@ private:
     void displayMatrix_crosspoint(const Mat& img, std::vector<pointInform>& crossPtsList);
     std::vector<matrixInform> extractLinkTable(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, int matrix2[10][100][100], int labelnum, std::vector<Point>& centerpoint); // 提取LinkTable信息，获得Bias
     void outputLists(std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, bool update[10]);
-    void hydraCode(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt);
+    void hydraCode_Mono_Homography(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt);
+    void hydraCode_Mono_PnP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt);
+    void hydraCode_stereo_ICP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt);
 
     std::vector<std::vector<int>> buildNeighbors(const std::vector<pointInform> &crossPtsList, int r);
     // 基于边长2*r+1, 为crossPtsList中的所有点生成近邻索引
     std::vector<linkInform> buildLinkers(std::vector<pointInform> &crossPtsList, float T);
     // 基于夹角阈值T, 为crossPtsList中的所有点生成连接信息
     
+    Point3f uv2xyz(Point2f uvLeft, Point2f uvRight); //双目测距
     void distAngle(const Point2f A, const Point2f B, float &dist, float &angle); // 计算两点连线的距离和角度,左上0°顺时针
     bool checkIncludedAngle(const float A, const float B, const float T); // 判断两个角度的夹角是否在阈值T以内
    

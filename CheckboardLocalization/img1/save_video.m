@@ -8,10 +8,7 @@ open(WriterObj);
 
 n_frames=numel(d);% n_frames表示图像帧的总数
 for i=0:n_frames - 1
-    if (i>93 && i<98) 
-        continue;
-    end
-    if (i==99) 
+    if (i==54)
         continue;
     end
     filename=strcat('F:\实验室\CheckboardLocalization\CheckboardLocalization\CheckboardLocalization\img1\',num2str(i),'.bmp');
