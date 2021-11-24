@@ -17,6 +17,8 @@
 #include "opencv2/features2d/features2d.hpp"
 #include "unistd.h"
 
+#include "crossMarkDetector.hpp"
+
 using namespace cv;
 
 struct crossPointResponderParams
@@ -25,7 +27,7 @@ struct crossPointResponderParams
     float T_maxInnerGap = 0.2;
     float T_minOuterGap = 0.25;
     float T_maxCenterBias = 1;
-    float T_minCorrelation = 0.85;
+    float T_minCorrelation = 0.8;
 };
 
 class crossPointResponder
@@ -54,9 +56,11 @@ private:
     bool checkPointCheck(const Mat &img, Point curPos);  // 检查点检查
     bool contourCheck(const Mat &img, Point curPos);     // 边框检查
     bool maskCheck(const Mat &Img, Point curPos);        // 模板检查
+    std::vector<Point> gradientCheck(const Mat& img, Point curPos);    // 基于梯度的交叉点亚像素坐标优化
     
 public:
     crossPointResponderParams params;
+    crossMarkDetectorParams params;
     bool    response_haveCrossPt;  // 指示测试点附近是否存在交叉点
     Point2f response_cross;        // 检测到的交叉点的亚像素坐标(图像坐标系,x-y向右-下)
     Point   response_crossPos;     // 检测到的交叉点的整数坐标(图像坐标系,x-y向右-下)
@@ -73,7 +77,7 @@ public:
     
     ~crossPointResponder();
     
-    void feed(const Mat &img, Point curPos);
+    void feed(const Mat &img, crossMarkDetectorParams params, crossPointResponderParams params);
     // 向交叉点响应器输入图像和测试点, 响应器以"response_"开头的公有成员会因此改变
 };
 
