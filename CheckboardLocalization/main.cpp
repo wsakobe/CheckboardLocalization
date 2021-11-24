@@ -25,10 +25,10 @@ void prepareImageRead(int nRet, void* handle);
 cv::Mat Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData);
 
 int main(int argc, char* argv[]) {
-    const char* imagename = "./Data/left/03.jpg";//此处为测试图片路径
+    const char* imagename = "76.bmp";//此处为测试图片路径
     //FILE* stream1;
     //FILE* stream2;
-    //freopen_s(&stream1, "linkTabel.txt", "r", stdin);
+    //freopen_s(&stream2, "./registration/right/15.txt", "w", stdout);
     
     /*VideoCapture capture1(0);
     VideoCapture capture2(2);
@@ -92,9 +92,9 @@ int main(int argc, char* argv[]) {
     //} 
     
     //处理视频流
-    /*VideoCapture capture;
+    VideoCapture capture;
     Mat img;
-    img = capture.open("test_video2.avi");
+    img = capture.open("ldy.avi");
     if (!capture.isOpened())
     {
         printf("can not open ...\n");
@@ -108,16 +108,17 @@ int main(int argc, char* argv[]) {
     crossPointResponderParams Rparams;
 
     crossMarkDetector filter(Dparams, Rparams);
-
+	double start_last = getTickCount();
     while (capture.read(img)) {
+		double start = getTickCount();
+		double time = (start - start_last) / (double)cvGetTickFrequency() / 1000;
+		start_last = start;
+		cout << time << std::endl;
         cvtColor(img, img, COLOR_BGR2GRAY);
         img.convertTo(img, CV_32FC1); img = img / 255;
-        char str[100];
-        sprintf_s(str, "./img_origin/%d%s", cnt, ".bmp");
-        imwrite(str, 255 * img);
         filter.feed(img, cnt++);
         waitKey(1);
-    }*/
+    }
     
     // 处理单幅图片
     /*Mat img = imread(imagename);
@@ -133,8 +134,8 @@ int main(int argc, char* argv[]) {
     filter.feed(img, 1);*/
 
     //处理双目视图
-    const char* imagename_stereo_left = "./Data/left/03.jpg";
-    const char* imagename_stereo_right = "./Data/right/03.jpg";
+    /*const char* imagename_stereo_left  = "./registration/left/6.bmp";
+    const char* imagename_stereo_right = "./registration/right/6.bmp";
     
     stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, Rot, Trans, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY, 0, imageSize, &validROIL, &validROIR);
     initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
@@ -162,6 +163,7 @@ int main(int argc, char* argv[]) {
 
     crossMarkDetector filter(Dparams, Rparams);
     filter.feed(img_stereo, 1);
+    img_stereo.release();*/
 
     //Test
     /*freopen_s(&stream2, "./RandomCrossPointBlur/Blur2/result11.txt", "w", stdout);
