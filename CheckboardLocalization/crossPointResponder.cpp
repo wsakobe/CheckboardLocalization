@@ -126,6 +126,44 @@ bool crossPointResponder::checkPointCheck(const Mat &img, Point curPos)
     return 1;
 }
 
+std::vector<Point> crossPointResponder::gradientCheck(const Mat& img, Point curPos) {
+    // 基于梯度的交叉点检测器demo
+    Mat Gx, Gy, Gpow, Gsum, G, G_NMS, s;
+    int sigma = 3;
+    int ksize = sigma * 2 + 1;
+    std::vector<Point> curPos;
+    Scharr(img, Gx, CV_32FC1, 1, 0);
+    Scharr(img, Gy, CV_32FC1, 0, 1);
+    
+    Gpow = Gx.mul(Gx) + Gy.mul(Gy);
+    sqrt(Gpow, Gpow);
+    GaussianBlur(Gpow, Gpow, Size(ksize, ksize), sigma);
+    GaussianBlur(Gx, Gx, Size(ksize, ksize), sigma);
+    GaussianBlur(Gy, Gy, Size(ksize, ksize), sigma);
+    Gx = Gx.mul(Gx);
+    Gy = Gy.mul(Gy);
+    Gsum = Gx + Gy;
+    sqrt(Gsum, Gsum);
+    G = Gpow - Gsum;
+    dilate(G, G_NMS, Mat());
+    for (int i = 0; i < Dparams.height; i++)
+    	for (int j = 0; j < Dparams.width; j++)
+    		if (G.ptr<float>(i)[j] != G_NMS.ptr<float>(i)[j])
+    			G_NMS.ptr<float>(i)[j] = 0;
+    G_NMS.copyTo(s);
+    s = s.reshape(1, Dparams.height * Dparams.width);
+    sort(s, s, SORT_EVERY_COLUMN + SORT_DESCENDING);
+    float G_filtermin = s.ptr<float>(200)[1];
+    for (int i = 0; i < Dparams.height; i++)
+    	for (int j = 0; j < Dparams.width; j++){
+    		if (G_NMS.ptr<float>(i)[j] < G_filtermin)
+    			G_NMS.ptr<float>(i)[j] = 0;
+    		else if (i >= Rparams.maskR && i < Dparams.height - Rparams.maskR && j >= Rparams.maskR && j < Dparams.width - Rparams.maskR)
+    				curPos.push_back(Point(j, i));
+    	}	
+    imshow("G_NMS", G_NMS);
+}
+
 bool  crossPointResponder::contourCheck(const Mat& img, Point curPos)
 {
     // 计算边框均值
@@ -241,6 +279,7 @@ bool crossPointResponder::maskCheck(const Mat& Img, Point curPos)
     Scalar meanTmp, meanCrop, stdTmp, stdCrop;
     meanStdDev(tmpCrop, meanTmp, stdTmp);
     meanStdDev(crop, meanCrop, stdCrop);
+    //printf("")
     float covar = (tmpCrop - meanTmp).dot(crop - meanCrop) / (maskL * maskL);
     response_score = covar / (stdTmp[0] * stdCrop[0]);
     if (response_score < params.T_minCorrelation) return 0;
@@ -271,11 +310,11 @@ bool crossPointResponder::maskCheck(const Mat& Img, Point curPos)
     return 1;
 }
 
-void crossPointResponder::feed(const Mat& img, Point curPos)
+void crossPointResponder::feed(const Mat& img, crossMarkDetectorParams Dparams, crossPointResponderParams Rparams)
 {
     response_haveCrossPt = 0;
     
-    if (!checkPointCheck(img, curPos)) return;
+    curPos = gradientCheck(img, Dparams, Rparams);
     if (!contourCheck(img, curPos))    return;
     if (!maskCheck(img, curPos))       return;
 
