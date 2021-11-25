@@ -92,6 +92,7 @@ int main(int argc, char* argv[]) {
     //} 
     
     //处理视频流
+    /*
     VideoCapture capture;
     Mat img;
     img = capture.open("ldy.avi");
@@ -119,7 +120,7 @@ int main(int argc, char* argv[]) {
         filter.feed(img, cnt++);
         waitKey(1);
     }
-    
+    */
     // 处理单幅图片
     /*Mat img = imread(imagename);
     cvtColor(img, img, COLOR_BGR2GRAY);
@@ -133,37 +134,66 @@ int main(int argc, char* argv[]) {
     crossMarkDetector filter(Dparams, Rparams);
     filter.feed(img, 1);*/
 
-    //处理双目视图
-    /*const char* imagename_stereo_left  = "./registration/left/6.bmp";
-    const char* imagename_stereo_right = "./registration/right/6.bmp";
-    
-    stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, Rot, Trans, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY, 0, imageSize, &validROIL, &validROIR);
-    initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
-    initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
-    
-    Mat img1 = imread(imagename_stereo_left);
-    Mat img2 = imread(imagename_stereo_right);
-    cvtColor(img1, img1, COLOR_BGR2GRAY);
-    img1.convertTo(img1, CV_32FC1); img1 = img1 / 255;
-    cvtColor(img2, img2, COLOR_BGR2GRAY);
-    img2.convertTo(img2, CV_32FC1); img2 = img2 / 255;
-    remap(img1, img1, mapLx, mapLy, INTER_LINEAR);
-    remap(img2, img2, mapRx, mapRy, INTER_LINEAR);
-    
-    vector<Mat>vImgs;
-    vImgs.push_back(img1);
-    vImgs.push_back(img2);
-    hconcat(vImgs, img_stereo);
+    //处理双目视频
+    VideoCapture capture_left, capture_right;
+    Mat img_left, img_right;
+    img_left = capture_left.open("left.avi");
+    img_right = capture_right.open("right.avi");
+    if (!capture_left.isOpened())
+    {
+        printf("Can not open left camera\n");
+        return -1;
+    }
+    if (!capture_right.isOpened())
+    {
+        printf("Can not open right camera\n");
+        return -1;
+    }
+    int cnt = 0;
+    //capture_left.read(img_left);
+    //capture_right.read(img_right);
+    //crossMarkDetectorParams Dparams;
+    //Dparams.height = img_left.rows;
+    //Dparams.width = img_right.cols * 2;
+    //crossPointResponderParams Rparams;
 
-    crossMarkDetectorParams Dparams;
-    Dparams.height = img_stereo.rows;
-    Dparams.width = img_stereo.cols;
-    crossPointResponderParams Rparams;
-    imwrite("img_stereo.bmp", img_stereo * 255);
+    //crossMarkDetector filter(Dparams, Rparams);
+    double start_last = getTickCount();
+    while (capture_left.read(img_left) && capture_right.read(img_right))  {
+        double start = getTickCount();
+        double time = (start - start_last) / (double)cvGetTickFrequency() / 1000;
+        start_last = start;
+        cout << time << std::endl;
+        stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, Rot, Trans, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY, 0, imageSize, &validROIL, &validROIR);
+        initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
+        initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
 
-    crossMarkDetector filter(Dparams, Rparams);
-    filter.feed(img_stereo, 1);
-    img_stereo.release();*/
+        cvtColor(img_left, img_left, COLOR_BGR2GRAY);
+        img_left.convertTo(img_left, CV_32FC1); img_left = img_left / 255;
+        cvtColor(img_right, img_right, COLOR_BGR2GRAY);
+        img_right.convertTo(img_right, CV_32FC1); img_right = img_right / 255;
+        //remap(img_left, img_left, mapLx, mapLy, INTER_LINEAR);
+        //remap(img_right, img_right, mapRx, mapRy, INTER_LINEAR);
+
+        vector<Mat>vImgs;
+        vImgs.push_back(img_left);
+        vImgs.push_back(img_right);
+        hconcat(vImgs, img_stereo);
+
+        crossMarkDetectorParams Dparams;
+        Dparams.height = img_stereo.rows;
+        Dparams.width = img_stereo.cols;
+        crossPointResponderParams Rparams;
+        //imwrite("img_stereo.bmp", img_stereo * 255);
+
+        crossMarkDetector filter(Dparams, Rparams);
+        filter.feed(img_stereo, cnt++);
+        
+        img_stereo.release();
+        waitKey(1);
+    }
+    
+    
 
     //Test
     /*freopen_s(&stream2, "./RandomCrossPointBlur/Blur2/result11.txt", "w", stdout);

@@ -48,19 +48,25 @@ void crossMarkDetector::findCrossPoint(const Mat& img, std::vector<pointInform>&
 {
 	// 全图搜索交叉点
 	crossPtsList.clear();
-	responder.feed(img, Dparams, Rparams);
+	Point curPos;
+	for (curPos.y = Rparams.maskR; curPos.y < Dparams.height - Rparams.maskR; ++curPos.y) {
+		for (curPos.x = Rparams.maskR; curPos.x < Dparams.width - Rparams.maskR; ++curPos.x) {
 
-	if (!responder.response_haveCrossPt) continue;
-	if (responder.response_crossPos.x < Rparams.maskR || responder.response_crossPos.x >= Dparams.width - Rparams.maskR)   continue;
-	if (responder.response_crossPos.y < Rparams.maskR || responder.response_crossPos.y >= Dparams.height - Rparams.maskR)  continue;
+			responder.feed(img, curPos);
 
-	pointInform inform;
-	inform.subPos = responder.response_cross;
-	inform.Pos = responder.response_crossPos;
-	inform.Bdirct = responder.response_blackLine;
-	inform.Wdirct = responder.response_whiteLine;
-	inform.score = responder.response_score;
-	crossPtsList.push_back(inform);
+			if (!responder.response_haveCrossPt) continue;
+			if (responder.response_crossPos.x < Rparams.maskR || responder.response_crossPos.x >= Dparams.width - Rparams.maskR)   continue;
+			if (responder.response_crossPos.y < Rparams.maskR || responder.response_crossPos.y >= Dparams.height - Rparams.maskR)  continue;
+
+			pointInform inform;
+			inform.subPos = responder.response_cross;
+			inform.Pos = responder.response_crossPos;
+			inform.Bdirct = responder.response_blackLine;
+			inform.Wdirct = responder.response_whiteLine;
+			inform.score = responder.response_score;
+			crossPtsList.push_back(inform);
+		}
+	}
 	
 	// 非极大值抑制
 	std::vector<std::vector<int>> neighbors = buildNeighbors(crossPtsList, Rparams.maskR);
@@ -258,8 +264,8 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 	}
 	matrix = extractLinkTable(img, crossPtsList, matrix, links, matrix2, labelNum, centerpoint);
 	//hydraCode_Mono_Homography(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
-	hydraCode_Mono_PnP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
-	//hydraCode_stereo_ICP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
+	//hydraCode_Mono_PnP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
+	hydraCode_stereo_ICP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
 	//displayMatrix(img, crossPtsList, matrix, links, centerpoint, updateSuccess, cartisian_dst, cnt);
 	//outputLists(crossPtsList, matrix, updateSuccess);
 }

@@ -15,8 +15,9 @@
 #include <opencv2/calib3d.hpp>
 #include <stdio.h>
 #include <stdlib.h>
-
 #include "crossPointResponder.hpp"
+
+using namespace cv;
 
 //相机标定参数！！
 const Mat cameraMatrixL = (Mat_<double>(3, 3) << 2182.81658852500, 0, 967.178328741567,
@@ -33,7 +34,6 @@ const Mat Rot = (Mat_<double>(3, 3) << 0.999994330397319, 0.000929027867023368, 
     -0.000939066437458143, 0.999994749825219, 0.00310136683161342,
     -0.00323377912707271, -0.00310438870318879, 0.999989952671194);
 
-using namespace cv;
 
 struct crossMarkDetectorParams
 {
