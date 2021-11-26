@@ -19,26 +19,26 @@
 
 using namespace cv;
 
-//相机标定参数！！
-const Mat cameraMatrixL = (Mat_<double>(3, 3) << 2182.81658852500, 0, 967.178328741567,
-    0, 2181.67551903788, 562.576163318582,
+//相机标定参数
+const Mat cameraMatrixL = (Mat_<double>(3, 3) << 2175.16512261259, 0, 959.993795354860,
+    0, 2174.34882395825, 572.808101410889,
     0, 0, 1);
-const Mat distCoeffL = (Mat_<double>(5, 1) << -0.161266978637745, 0.177732011025603, 0, 0, 0);
-const Mat cameraMatrixR = (Mat_<double>(3, 3) << 2193.72319238604, 0, 967.526693990914,
-    0, 2193.02784130591, 569.896513557747,
+const Mat distCoeffL = (Mat_<double>(5, 1) << -0.167822388435269, 0.207929984358728, 0, 0, 0.0535633542290350);
+const Mat cameraMatrixR = (Mat_<double>(3, 3) << 2161.64059733675, 0, 972.355518599543,
+    0, 2161.74756958146, 600.591555771023,
     0, 0, 1);
-const Mat distCoeffR = (Mat_<double>(5, 1) << -0.158460245490339, 0.171991473302666, 0, 0, 0);
+const Mat distCoeffR = (Mat_<double>(5, 1) << -0.176306122962435, 0.237195122083599, 0, 0, 0.0449622672732098);
 
-const Mat Trans = (Mat_<double>(3, 1) << -90.2083741137207, -0.708670287714825, 0.396474811033060);
-const Mat Rot = (Mat_<double>(3, 3) << 0.999994330397319, 0.000929027867023368, 0.00323667737640709,
-    -0.000939066437458143, 0.999994749825219, 0.00310136683161342,
-    -0.00323377912707271, -0.00310438870318879, 0.999989952671194);
+const Mat Trans = (Mat_<double>(3, 1) << -173.781360311573, 0.615014125269484, 36.9010831188838);
+const Mat Rot = (Mat_<double>(3, 3) << 0.947511081886498, 0.0151536793119088, 0.319363610490598,
+    -0.0117498340123378, 0.999851802311425, -0.0125823215377342,
+    -0.319506950007291, 0.00816941968001684, 0.947548716150854);
 
 
 struct crossMarkDetectorParams
 {
     int height, width;        // 图像的预期尺寸
-    int maxMatrixR = 30;     // 棋盘格点的最大间隔
+    int maxMatrixR = 50;     // 棋盘格点的最大间隔
     int maxSupportAngle = 15; // 支持者判定中的最大夹角
 };
 
@@ -95,9 +95,10 @@ private:
     std::vector<linkInform> buildLinkers(std::vector<pointInform> &crossPtsList, float T);
     // 基于夹角阈值T, 为crossPtsList中的所有点生成连接信息
     
-    Point3f uv2xyz(Point2f uvLeft, Point2f uvRight); //双目测距
+    void triangulation(const std::vector<Point2f>& points_left, const std::vector<Point2f>& points_right, std::vector<Point3f>& points); //双目测距
     void distAngle(const Point2f A, const Point2f B, float &dist, float &angle); // 计算两点连线的距离和角度,左上0°顺时针
     bool checkIncludedAngle(const float A, const float B, const float T); // 判断两个角度的夹角是否在阈值T以内
+    Point2f pixel2cam(const Point2d& p, const Mat& K);
    
 public:
     crossMarkDetectorParams Dparams;    // 标记图案检测器的参数

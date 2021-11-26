@@ -28,7 +28,7 @@ void crossMarkDetector::feed(const Mat& img, int cnt)
 {
 	assert(img.type() == CV_32FC1); //判断图片格式是否正确
 	std::ifstream OpenFile;
-	OpenFile.open("linkTabel.txt");
+	OpenFile.open("linkTable_new.txt");
 	if (!signal) {
 		signal = true;
 		int val;
@@ -718,35 +718,36 @@ void crossMarkDetector::hydraCode_stereo_ICP(const Mat& img, std::vector<pointIn
 	cvtColor(img, imgMark_stereo, COLOR_GRAY2RGB);
 	
 	int val;
-	double WorldCoor[16][16][3];
+	double WorldCoor[30][8][3];
 	memset(WorldCoor, 0, sizeof(WorldCoor));
 	std::ifstream OpenFile;
 	OpenFile.open("registration_new.txt");
 	while (!OpenFile.eof()) {
 		OpenFile >> val;
 		//val = ((val - 1) / 6) * 15 + ((val - 1) % 6);
-		OpenFile >> WorldCoor[val / 15][val % 15][0] >> WorldCoor[val / 15][val % 15][1] >> WorldCoor[val / 15][val % 15][2];
+		OpenFile >> WorldCoor[(val - 1) / 7][(val - 1) % 7][0] >> WorldCoor[(val - 1) / 7][(val - 1) % 7][1] >> WorldCoor[(val - 1) / 7][(val - 1) % 7][2];
 	}
 
 	std::vector<Point3f> pts1, pts2;
+	std::vector<Point2f> imgpts1, imgpts2;
 	for (int i = 0; i < crossPtsList.size() - 1; i++)
 		for (int j = i + 1; j < crossPtsList.size(); j++) {
 			if ((matrix[i].mPos == matrix[j].mPos) && (update[matrix[i].mLabel]) && (update[matrix[j].mLabel])) {
 				if (crossPtsList[i].subPos.x < crossPtsList[j].subPos.x) {
 					pts1.push_back(Point3f(WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][0], WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][1], WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][2]));
-					//pts2.push_back(Point3f(WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][0], WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][1], WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][2] + 10));
-					printf("%d ", matrix[j].mPos.x * 15 + matrix[j].mPos.y);
-					pts2.push_back(uv2xyz(crossPtsList[i].subPos, crossPtsList[j].subPos));
+					imgpts1.push_back(crossPtsList[i].subPos);
+					imgpts2.push_back(Point2f(crossPtsList[j].subPos.x - 1920, crossPtsList[j].subPos.y));
 				}
 				else {
 					pts1.push_back(Point3f(WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][0], WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][1], WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][2]));
-					//pts2.push_back(Point3f(WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][0], WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][1], WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][2] + 10));
-					printf("%d ", matrix[j].mPos.x * 15 + matrix[j].mPos.y);
-					pts2.push_back(uv2xyz(crossPtsList[j].subPos, crossPtsList[i].subPos));
+					imgpts1.push_back(crossPtsList[j].subPos);
+					imgpts2.push_back(Point2f(crossPtsList[i].subPos.x - 1920, crossPtsList[i].subPos.y));
 				}
 				break;
 			}
 		}
+	triangulation(imgpts1, imgpts2, pts2);
+
 	Point3f p1, p2;
 	for (int i = 0; i < pts1.size(); i++) {
 		p1 += pts1[i];
@@ -773,35 +774,24 @@ void crossMarkDetector::hydraCode_stereo_ICP(const Mat& img, std::vector<pointIn
 	Mat pm1 = (Mat_<float>(3, 1) << p1.x, p1.y, p1.z);
 	Mat pm2 = (Mat_<float>(3, 1) << p2.x, p2.y, p2.z);
 
-	tvec = (pm1 - R * pm2) / 1000;
+	tvec = pm2 - R * pm1;
 	
 	std::cout << R << std::endl << tvec << std::endl;
 	Rodrigues(R, rvec);
-
-	std::vector<Point3f> axesPoints;
-	//绘制轴线
-	for (int plotPoints = -5; plotPoints < 12; plotPoints++) {
-		axesPoints.push_back(Point3f(0.0483736 + (-0.9980) * plotPoints / 200, 0.0072511 + (-0.0208) * plotPoints / 200, 0.3271322 + (-0.06) * plotPoints / 200));
-	}
-
-	std::vector<Point2f> imagePoints;
-	projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
-
-	// draw axes lines
-	for (int i = 0; i < axesPoints.size() - 1; i += 2)
-		line(imgMark_stereo, imagePoints[i], imagePoints[i + 1], Scalar(120, 0, 0), 2);
 	
 	//绘制边框
+	std::vector<Point3f> axesPoints;
+	std::vector<Point2f> imagePoints;
 	axesPoints.clear();
 	imagePoints.clear();
-	for (int i = 0; i < 6; i++)
-		axesPoints.push_back(Point3d(WorldCoor[i][0][0] / 1000.0, WorldCoor[i][0][1] / 1000.0, WorldCoor[i][0][2] / 1000.0));
+	for (int i = 9; i < 19; i++)
+		axesPoints.push_back(Point3d(WorldCoor[i][2][0], WorldCoor[i][2][1], WorldCoor[i][2][2]));
 	projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
 	for (int i = 0; i < axesPoints.size() - 1; i++) {
 		line(imgMark_stereo, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
 		circle(imgMark_stereo, imagePoints[i], 3, Scalar(0, 0, 255));
 	}
-
+	/*
 	axesPoints.clear();
 	imagePoints.clear();
 	for (int i = 0; i < 6; i++)
@@ -871,66 +861,48 @@ void crossMarkDetector::hydraCode_stereo_ICP(const Mat& img, std::vector<pointIn
 		line(imgMark_stereo, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
 		circle(imgMark_stereo, imagePoints[i], 3, Scalar(0, 0, 255));
 	}
-
+	*/
 	imshow("imgMark_stereo", imgMark_stereo);
-	imwrite("./img_icp/6.bmp", imgMark_stereo * 255);
+	//imwrite("./img_icp/6.bmp", imgMark_stereo * 255);
 }
 
-Point3f crossMarkDetector::uv2xyz(Point2f uvLeft, Point2f uvRight)
+void crossMarkDetector::triangulation(const std::vector<Point2f>&points_left, const std::vector<Point2f>&points_right, std::vector<Point3f>& points)
 {
 	Mat mLeftRotation = Mat::eye(3, 3, CV_64F);
 	Mat mLeftTranslation = Mat::zeros(3, 1, CV_64F);
 	Mat mLeftRT = Mat(3, 4, CV_64F);    //左相机M矩阵
 	hconcat(mLeftRotation, mLeftTranslation, mLeftRT);
 	Mat mLeftM = cameraMatrixL * mLeftRT;
-	//cout<<"左相机M矩阵 = "<<endl<<mLeftM<<endl;
 
 	Mat mRightRT = Mat(3, 4, CV_64F);   //右相机M矩阵
 	hconcat(Rot, Trans, mRightRT);
 	Mat mRightM = cameraMatrixR * mRightRT;
-	//cout<<"右相机M矩阵 = "<<endl<<mRightM<<endl;
 
-	uvRight.x -= 1920;
-	//最小二乘法A矩阵
-	Mat A = Mat(4, 3, CV_64F);
-	A.at<double>(0, 0) = uvLeft.x * mLeftM.at<double>(2, 0) - mLeftM.at<double>(0, 0);
-	A.at<double>(0, 1) = uvLeft.x * mLeftM.at<double>(2, 1) - mLeftM.at<double>(0, 1);
-	A.at<double>(0, 2) = uvLeft.x * mLeftM.at<double>(2, 2) - mLeftM.at<double>(0, 2);
+	std::vector<Point2f> pts_1, pts_2;
+	for (int i = 0; i < points_left.size(); i++) {
+		// 将像素坐标转换至相机坐标
+		pts_1.push_back(pixel2cam(points_left[i], cameraMatrixL));
+		pts_2.push_back(pixel2cam(points_right[i], cameraMatrixR));
+	}
+	Mat pts_4d;
+	cv::triangulatePoints(mLeftRT, mRightRT, pts_1, pts_2, pts_4d);
 
-	A.at<double>(1, 0) = uvLeft.y * mLeftM.at<double>(2, 0) - mLeftM.at<double>(1, 0);
-	A.at<double>(1, 1) = uvLeft.y * mLeftM.at<double>(2, 1) - mLeftM.at<double>(1, 1);
-	A.at<double>(1, 2) = uvLeft.y * mLeftM.at<double>(2, 2) - mLeftM.at<double>(1, 2);
-
-	A.at<double>(2, 0) = uvRight.x * mRightM.at<double>(2, 0) - mRightM.at<double>(0, 0);
-	A.at<double>(2, 1) = uvRight.x * mRightM.at<double>(2, 1) - mRightM.at<double>(0, 1);
-	A.at<double>(2, 2) = uvRight.x * mRightM.at<double>(2, 2) - mRightM.at<double>(0, 2);
-
-	A.at<double>(3, 0) = uvRight.y * mRightM.at<double>(2, 0) - mRightM.at<double>(1, 0);
-	A.at<double>(3, 1) = uvRight.y * mRightM.at<double>(2, 1) - mRightM.at<double>(1, 1);
-	A.at<double>(3, 2) = uvRight.y * mRightM.at<double>(2, 2) - mRightM.at<double>(1, 2);
-
-	//最小二乘法B矩阵
-	Mat B = Mat(4, 1, CV_64F);
-	B.at<double>(0, 0) = mLeftM.at<double>(0, 3) - uvLeft.x * mLeftM.at<double>(2, 3);
-	B.at<double>(1, 0) = mLeftM.at<double>(1, 3) - uvLeft.y * mLeftM.at<double>(2, 3);
-	B.at<double>(2, 0) = mRightM.at<double>(0, 3) - uvRight.x * mRightM.at<double>(2, 3);
-	B.at<double>(3, 0) = mRightM.at<double>(1, 3) - uvRight.y * mRightM.at<double>(2, 3);
-
-	Mat XYZ = Mat(3, 1, CV_64F);
-	//采用SVD最小二乘法求解XYZ
-	solve(A, B, XYZ, DECOMP_SVD);
-
-	//世界坐标系中坐标
-	Point3f world;
-	world.x = XYZ.at<double>(0, 0);
-	world.y = XYZ.at<double>(1, 0);
-	world.z = XYZ.at<double>(2, 0);
-	std::cout << world.x << " " << world.y << " " << world.z << std::endl;
-
-	return world;
+	// 转换成非齐次坐标
+	if (pts_4d.cols > 0)
+		for (int i = 0; i < pts_4d.cols; i++)
+		{
+			Mat x = pts_4d.col(i);
+			x /= x.at<float>(3, 0); // 归一化
+			Point3d p(
+				x.at<float>(0, 0),
+				x.at<float>(1, 0),
+				x.at<float>(2, 0)
+			);
+			points.push_back((Point3f)p);
+		}
 }
 
-void crossMarkDetector::distAngle(const Point2f A, const Point2f B, float& dist, float& angle)
+	void crossMarkDetector::distAngle(const Point2f A, const Point2f B, float& dist, float& angle)
 {
 	Point2f v = B - A;
 	dist = sqrt(v.x * v.x + v.y * v.y);
@@ -944,4 +916,14 @@ bool crossMarkDetector::checkIncludedAngle(const float A, const float B, const f
 	if (in > 180) in = 360 - in;
 	if (in > T) return 0;
 	return 1;
+}
+
+// 将像素坐标（以左上角为坐标原点，单位为像素范围）转换至相机坐标（以中心处为坐标原点，单位为物理单位）
+Point2f crossMarkDetector::pixel2cam(const Point2d& p, const Mat& K)
+{
+	return Point2f
+	(
+		(p.x - K.at<double>(0, 2)) / K.at<double>(0, 0),
+		(p.y - K.at<double>(1, 2)) / K.at<double>(1, 1)
+	);
 }
