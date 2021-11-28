@@ -24,6 +24,9 @@ void* handle = NULL;
 void prepareImageRead(int nRet, void* handle);
 cv::Mat Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData);
 
+double start, start_last;
+double fps;
+
 int main(int argc, char* argv[]) {
     const char* imagename = "76.bmp";//此处为测试图片路径
     //FILE* stream1;
@@ -158,15 +161,16 @@ int main(int argc, char* argv[]) {
     //crossPointResponderParams Rparams;
 
     //crossMarkDetector filter(Dparams, Rparams);
-    double start_last = getTickCount();
+    start_last = getTickCount();
     while (capture_left.read(img_left) && capture_right.read(img_right))  {
-        double start = getTickCount();
-        double time = (start - start_last) / (double)cvGetTickFrequency() / 1000;
+        start = getTickCount();
+        fps = 1000000.0 * (double)cvGetTickFrequency() / (start - start_last);
+        //printf("%d %d %.3d\n", start, start_last, fps);
         start_last = start;
-        cout << time << std::endl;
-        stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, Rot, Trans, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY, 0, imageSize, &validROIL, &validROIR);
-        initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
-        initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
+
+        //stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, Rot, Trans, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY, 0, imageSize, &validROIL, &validROIR);
+        //initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pl, imageSize, CV_32FC1, mapLx, mapLy);
+        //initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
 
         cvtColor(img_left, img_left, COLOR_BGR2GRAY);
         img_left.convertTo(img_left, CV_32FC1); img_left = img_left / 255;
@@ -174,10 +178,15 @@ int main(int argc, char* argv[]) {
         img_right.convertTo(img_right, CV_32FC1); img_right = img_right / 255;
         //remap(img_left, img_left, mapLx, mapLy, INTER_LINEAR);
         //remap(img_right, img_right, mapRx, mapRy, INTER_LINEAR);
+        Mat img_left_undistort;
+        undistort(img_left, img_left_undistort, cameraMatrixL, distCoeffL, cameraMatrixL);
+        Mat img_right_undistort;
+        undistort(img_right, img_right_undistort, cameraMatrixR, distCoeffR, cameraMatrixR);
+
 
         vector<Mat>vImgs;
-        vImgs.push_back(img_left);
-        vImgs.push_back(img_right);
+        vImgs.push_back(img_left_undistort);
+        vImgs.push_back(img_right_undistort);
         hconcat(vImgs, img_stereo);
 
         crossMarkDetectorParams Dparams;
@@ -187,7 +196,7 @@ int main(int argc, char* argv[]) {
         //imwrite("img_stereo.bmp", img_stereo * 255);
 
         crossMarkDetector filter(Dparams, Rparams);
-        filter.feed(img_stereo, cnt++);
+        filter.feed(img_stereo, cnt++, fps);
         
         img_stereo.release();
         waitKey(1);

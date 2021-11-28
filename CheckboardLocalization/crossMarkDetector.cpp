@@ -24,7 +24,7 @@ crossMarkDetector::~crossMarkDetector()
 {
 }
 
-void crossMarkDetector::feed(const Mat& img, int cnt)
+void crossMarkDetector::feed(const Mat& img, int cnt, double fps)
 {
 	assert(img.type() == CV_32FC1); //判断图片格式是否正确
 	std::ifstream OpenFile;
@@ -40,7 +40,7 @@ void crossMarkDetector::feed(const Mat& img, int cnt)
 		}
 	}
 	findCrossPoint(img, crossPtsList);
-	buildMatrix(img, crossPtsList, cnt);
+	buildMatrix(img, crossPtsList, cnt, fps);
 	//displayMatrix_crosspoint(img, crossPtsList);
 }
 
@@ -205,7 +205,7 @@ std::vector<linkInform> crossMarkDetector::buildLinkers(std::vector<pointInform>
 	return links;
 }
 
-void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, int cnt)
+void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, int cnt, double fps)
 {
 	// 建立连接
 	std::vector<linkInform> links = buildLinkers(crossPtsList, Dparams.maxSupportAngle);
@@ -265,7 +265,7 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 	matrix = extractLinkTable(img, crossPtsList, matrix, links, matrix2, labelNum, centerpoint);
 	//hydraCode_Mono_Homography(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
 	//hydraCode_Mono_PnP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
-	hydraCode_stereo_ICP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
+	hydraCode_stereo_ICP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt, fps);
 	//displayMatrix(img, crossPtsList, matrix, links, centerpoint, updateSuccess, cartisian_dst, cnt);
 	//outputLists(crossPtsList, matrix, updateSuccess);
 }
@@ -712,7 +712,7 @@ void crossMarkDetector::hydraCode_Mono_PnP(const Mat& img, std::vector<pointInfo
 	imwrite(str, 255 * imgMark_pnp);
 }
 
-void crossMarkDetector::hydraCode_stereo_ICP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt) {
+void crossMarkDetector::hydraCode_stereo_ICP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt, double fps) {
 	Mat imgMark_stereo(Dparams.height, Dparams.width, CV_32FC3);
 	Mat ide = Mat::eye(3, 3, CV_32FC1);
 	cvtColor(img, imgMark_stereo, COLOR_GRAY2RGB);
@@ -771,10 +771,14 @@ void crossMarkDetector::hydraCode_stereo_ICP(const Mat& img, std::vector<pointIn
 	Mat U, S, Vt;
 	SVDecomp(W, S, U, Vt);
 	R = U * Vt;
+	R = R.t();
 	Mat pm1 = (Mat_<float>(3, 1) << p1.x, p1.y, p1.z);
 	Mat pm2 = (Mat_<float>(3, 1) << p2.x, p2.y, p2.z);
 
 	tvec = pm2 - R * pm1;
+	if (isnan(tvec.ptr<float>(0)[0])){
+		return ;
+	}
 	
 	std::cout << R << std::endl << tvec << std::endl;
 	Rodrigues(R, rvec);
@@ -791,11 +795,11 @@ void crossMarkDetector::hydraCode_stereo_ICP(const Mat& img, std::vector<pointIn
 		line(imgMark_stereo, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
 		circle(imgMark_stereo, imagePoints[i], 3, Scalar(0, 0, 255));
 	}
-	/*
+	
 	axesPoints.clear();
 	imagePoints.clear();
-	for (int i = 0; i < 6; i++)
-		axesPoints.push_back(Point3d(WorldCoor[i][5][0] / 1000.0, WorldCoor[i][5][1] / 1000.0, WorldCoor[i][5][2] / 1000.0));
+	for (int i = 2; i < 7; i++)
+		axesPoints.push_back(Point3d(WorldCoor[9][i][0], WorldCoor[9][i][1], WorldCoor[9][i][2]));
 	projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
 	for (int i = 0; i < axesPoints.size() - 1; i++) {
 		line(imgMark_stereo, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
@@ -804,8 +808,8 @@ void crossMarkDetector::hydraCode_stereo_ICP(const Mat& img, std::vector<pointIn
 
 	axesPoints.clear();
 	imagePoints.clear();
-	for (int i = 0; i < 6; i++)
-		axesPoints.push_back(Point3d(WorldCoor[0][i][0] / 1000.0, WorldCoor[0][i][1] / 1000.0, WorldCoor[0][i][2] / 1000.0));
+	for (int i = 2; i < 7; i++)
+		axesPoints.push_back(Point3d(WorldCoor[18][i][0], WorldCoor[18][i][1], WorldCoor[18][i][2]));
 	projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
 	for (int i = 0; i < axesPoints.size() - 1; i++) {
 		line(imgMark_stereo, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
@@ -814,60 +818,43 @@ void crossMarkDetector::hydraCode_stereo_ICP(const Mat& img, std::vector<pointIn
 
 	axesPoints.clear();
 	imagePoints.clear();
-	for (int i = 0; i < 6; i++)
-		axesPoints.push_back(Point3d(WorldCoor[5][i][0] / 1000.0, WorldCoor[5][i][1] / 1000.0, WorldCoor[5][i][2] / 1000.0));
+	for (int i = 9; i < 19; i++)
+		axesPoints.push_back(Point3d(WorldCoor[i][6][0], WorldCoor[i][6][1], WorldCoor[i][6][2]));
 	projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
 	for (int i = 0; i < axesPoints.size() - 1; i++) {
 		line(imgMark_stereo, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
 		circle(imgMark_stereo, imagePoints[i], 3, Scalar(0, 0, 255));
 	}
 
+	//绘制末端执行器位姿
 	axesPoints.clear();
 	imagePoints.clear();
-	for (int i = 10; i < 13; i++)
-		axesPoints.push_back(Point3d(WorldCoor[0][i][0] / 1000.0, WorldCoor[0][i][1] / 1000.0, WorldCoor[0][i][2] / 1000.0));
-	projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
-	for (int i = 0; i < axesPoints.size() - 1; i++) {
-		line(imgMark_stereo, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-		circle(imgMark_stereo, imagePoints[i], 3, Scalar(0, 0, 255));
-	}
+	Point3f EndEffector_point = Point3f(29.9093, 214.3799, 366.6940);
+	Mat endEffector_point = (Mat_<float>(3, 1) << EndEffector_point.x, EndEffector_point.y, EndEffector_point.z);
+	Mat EndEffector_camera = R * endEffector_point + tvec;
+	std::vector<Point3f> endEffector_camera;
+	endEffector_camera = Mat_<Point3f>(EndEffector_camera);
 
-	axesPoints.clear();
-	imagePoints.clear();
-	for (int i = 7; i < 13; i++)
-		axesPoints.push_back(Point3d(WorldCoor[15][i][0] / 1000.0, WorldCoor[15][i][1] / 1000.0, WorldCoor[15][i][2] / 1000.0));
+	axesPoints.push_back(EndEffector_point);
 	projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
-	for (int i = 0; i < axesPoints.size() - 1; i++) {
-		line(imgMark_stereo, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-		circle(imgMark_stereo, imagePoints[i], 3, Scalar(0, 0, 255));
-	}
+	circle(imgMark_stereo, imagePoints[0], 1, Scalar(0, 255, 0));
+	
+	Mat imgMark_Camera1(imgMark_stereo, Rect(0, 0, 1920, 1200));
 
-	axesPoints.clear();
-	imagePoints.clear();
-	for (int i = 0; i < 16; i++)
-		axesPoints.push_back(Point3d(WorldCoor[i][12][0] / 1000.0, WorldCoor[i][12][1] / 1000.0, WorldCoor[i][12][2] / 1000.0));
-	projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
-	for (int i = 0; i < axesPoints.size() - 1; i++) {
-		line(imgMark_stereo, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-		circle(imgMark_stereo, imagePoints[i], 3, Scalar(0, 0, 255));
-	}
+	char str[20];
+	sprintf_s(str, "FPS: %.3lf", fps);
 
-	axesPoints.clear();
-	imagePoints.clear();
-	for (int i = 1; i < 16; i++)
-		axesPoints.push_back(Point3d(WorldCoor[i][7][0] / 1000.0, WorldCoor[i][7][1] / 1000.0, WorldCoor[i][7][2] / 1000.0));
-	projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
-	for (int i = 0; i < axesPoints.size() - 1; i++) {
-		line(imgMark_stereo, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-		circle(imgMark_stereo, imagePoints[i], 3, Scalar(0, 0, 255));
-	}
-	*/
-	imshow("imgMark_stereo", imgMark_stereo);
+	putText(imgMark_Camera1, str, Point(1600, 50), FONT_HERSHEY_SIMPLEX, 1.5, Scalar(255, 23, 0), 4, 8);
+
+	imshow("imgMark_stereo", imgMark_Camera1);
 	//imwrite("./img_icp/6.bmp", imgMark_stereo * 255);
 }
 
 void crossMarkDetector::triangulation(const std::vector<Point2f>&points_left, const std::vector<Point2f>&points_right, std::vector<Point3f>& points)
 {
+	if (!points_left.size())
+		return;
+
 	Mat mLeftRotation = Mat::eye(3, 3, CV_64F);
 	Mat mLeftTranslation = Mat::zeros(3, 1, CV_64F);
 	Mat mLeftRT = Mat(3, 4, CV_64F);    //左相机M矩阵
@@ -888,7 +875,7 @@ void crossMarkDetector::triangulation(const std::vector<Point2f>&points_left, co
 	cv::triangulatePoints(mLeftRT, mRightRT, pts_1, pts_2, pts_4d);
 
 	// 转换成非齐次坐标
-	if (pts_4d.cols > 0)
+	if (!pts_4d.empty())
 		for (int i = 0; i < pts_4d.cols; i++)
 		{
 			Mat x = pts_4d.col(i);
@@ -902,7 +889,7 @@ void crossMarkDetector::triangulation(const std::vector<Point2f>&points_left, co
 		}
 }
 
-	void crossMarkDetector::distAngle(const Point2f A, const Point2f B, float& dist, float& angle)
+void crossMarkDetector::distAngle(const Point2f A, const Point2f B, float& dist, float& angle)
 {
 	Point2f v = B - A;
 	dist = sqrt(v.x * v.x + v.y * v.y);
