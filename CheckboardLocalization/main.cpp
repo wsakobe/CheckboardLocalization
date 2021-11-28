@@ -1,8 +1,12 @@
 #include "crossMarkDetector.hpp"
 #include <stdio.h>
 #include <process.h>
+//#include <winsock.h>
+//#include <WinUser.h>
 #include <conio.h>
 #include "mvcameracontrol.h"
+
+//#define KEYDOWN( vk ) ( 0x8000 & ::GetAsyncKeyState( vk ) )
 
 using namespace std;
 using namespace cv;
@@ -19,17 +23,137 @@ Rect validROIR;
 Mat mapLx, mapLy, mapRx, mapRy;     //映射表  
 Mat Rl, Rr, Pl, Pr, Q;              //校正旋转矩阵R，投影矩阵P 重投影矩阵Q
 
-void* handle = NULL;
+//HikVision Camera Preparation
+int nRet = MV_OK;
+int nRet1 = MV_OK;
+int nRet2 = MV_OK;
+void* handle1 = NULL;
+void* handle2 = NULL;
+unsigned char* pData;
+unsigned int g_nPayloadSize = 0;
+MV_FRAME_OUT_INFO_EX* imageInfo;
+Mat Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData);
 
-void prepareImageRead(int nRet, void* handle);
-cv::Mat Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData);
+Mat img_left, img_right, img_left_undistort, img_right_undistort;
+vector<Mat>vImgs;
+
+double start, start_last;
+double fps;
 
 int main(int argc, char* argv[]) {
     const char* imagename = "76.bmp";//此处为测试图片路径
-    //FILE* stream1;
-    //FILE* stream2;
-    //freopen_s(&stream2, "./registration/right/15.txt", "w", stdout);
+
+    MV_CC_DEVICE_INFO_LIST stDeviceList;
+    memset(&stDeviceList, 0, sizeof(MV_CC_DEVICE_INFO_LIST));
+
+    while (stDeviceList.nDeviceNum != 2)
+        nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDeviceList);
+    if (MV_OK != nRet)
+    {
+        printf("Enum Devices fail! nRet [0x%x]\n", nRet);
+    }
     
+    nRet1 = MV_CC_CreateHandle(&handle1, stDeviceList.pDeviceInfo[0]);
+    nRet2 = MV_CC_CreateHandle(&handle2, stDeviceList.pDeviceInfo[1]);
+    if ((MV_OK != nRet1) || (MV_OK != nRet2))
+    {
+        printf("Create Handle fail! nRet [0x%x]\n", nRet1);
+    }
+
+    nRet1 = MV_CC_OpenDevice(handle1);
+    nRet2 = MV_CC_OpenDevice(handle2);
+    if ((MV_OK != nRet1) || (MV_OK != nRet2))
+    {   
+        printf("Open Device fail! nRet [0x%x]\n", nRet1);
+    }
+
+    nRet1 = MV_CC_SetEnumValue(handle1, "TriggerMode", 0);
+    nRet2 = MV_CC_SetEnumValue(handle2, "TriggerMode", 0);
+    if ((MV_OK != nRet1) || (MV_OK != nRet2))
+    {
+        printf("Set Enum Value fail! nRet [0x%x]\n", nRet1);
+    }
+
+    // Get payload size
+    MVCC_INTVALUE stParam;
+    memset(&stParam, 0, sizeof(MVCC_INTVALUE));
+    nRet = MV_CC_GetIntValue(handle1, "PayloadSize", &stParam);
+    g_nPayloadSize = stParam.nCurValue;
+
+    nRet1 = MV_CC_StartGrabbing(handle1);
+    nRet2 = MV_CC_StartGrabbing(handle2);
+    if ((MV_OK != nRet1) || (MV_OK != nRet2))
+    {
+        printf("Start Grabbing fail! nRet [0x%x]\n", nRet1);
+    }
+
+    MV_FRAME_OUT_INFO_EX stImageInfo1 = { 0 };
+    memset(&stImageInfo1, 0, sizeof(MV_FRAME_OUT_INFO_EX));
+    MV_FRAME_OUT_INFO_EX stImageInfo2 = { 0 };
+    memset(&stImageInfo2, 0, sizeof(MV_FRAME_OUT_INFO_EX));
+    unsigned char* pData1 = (unsigned char*)malloc(sizeof(unsigned char) * (g_nPayloadSize));
+    unsigned char* pData2 = (unsigned char*)malloc(sizeof(unsigned char) * (g_nPayloadSize));
+    int cnt = 1;
+
+    while (1) {
+        if (kbhit()) {
+            char ch = getch();
+            if (ch == 27) {
+                nRet1 = MV_CC_CloseDevice(handle1);
+                nRet2 = MV_CC_CloseDevice(handle2);
+                if ((MV_OK != nRet1) || (MV_OK != nRet2))
+                {
+                    printf("ClosDevice fail! nRet [0x%x]\n", nRet1);
+                    break;
+                }
+
+                // Destroy handle
+                nRet1 = MV_CC_DestroyHandle(handle1);
+                nRet2 = MV_CC_DestroyHandle(handle2);
+                if ((MV_OK != nRet1) || (MV_OK != nRet2))
+                {
+                    printf("Destroy Handle fail! nRet [0x%x]\n", nRet1);
+                    break;
+                }
+                printf("Device successfully closed.\n");
+                break;
+            }
+        }
+        nRet1 = MV_CC_GetOneFrameTimeout(handle1, pData1, g_nPayloadSize, &stImageInfo1, 100);
+        nRet2 = MV_CC_GetOneFrameTimeout(handle2, pData2, g_nPayloadSize, &stImageInfo2, 100);
+        if ((MV_OK == nRet1) && (MV_OK == nRet2)) {
+            Mat img_left = Convert2Mat(&stImageInfo1, pData1);
+            Mat img_right = Convert2Mat(&stImageInfo2, pData2);
+            start = getTickCount();
+            fps = 1000000.0 * (double)cvGetTickFrequency() / (start - start_last);
+            start_last = start;
+            printf("%.2f\n", fps);
+            img_left.convertTo(img_left, CV_32FC1); img_left = img_left / 255;
+            img_right.convertTo(img_right, CV_32FC1); img_right = img_right / 255;
+
+            undistort(img_left, img_left_undistort, cameraMatrixL, distCoeffL, cameraMatrixL);
+            undistort(img_right, img_right_undistort, cameraMatrixR, distCoeffR, cameraMatrixR);
+
+            vImgs.push_back(img_left_undistort);
+            vImgs.push_back(img_right_undistort);
+            hconcat(vImgs, img_stereo);
+
+            crossMarkDetectorParams Dparams;
+            Dparams.height = img_stereo.rows;
+            Dparams.width = img_stereo.cols;
+            crossPointResponderParams Rparams;
+            //imshow("img_stereo", img_stereo);
+            //imwrite("img_stereo.bmp", img_stereo * 255);
+
+            crossMarkDetector filter(Dparams, Rparams);
+            filter.feed(img_stereo, cnt++, fps);
+
+            img_stereo.release();
+            vImgs.clear();
+            waitKey(1);
+        }
+    }
+ 
     /*VideoCapture capture1(0);
     VideoCapture capture2(2);
 
@@ -132,11 +256,10 @@ int main(int argc, char* argv[]) {
     crossPointResponderParams Rparams;
 
     crossMarkDetector filter(Dparams, Rparams);
-    filter.feed(img, 1);*/
+    filter.feed(img, 1);
 
     //处理双目视频
     VideoCapture capture_left, capture_right;
-    Mat img_left, img_right;
     img_left = capture_left.open("left.avi");
     img_right = capture_right.open("right.avi");
     if (!capture_left.isOpened())
@@ -158,26 +281,22 @@ int main(int argc, char* argv[]) {
     //crossPointResponderParams Rparams;
 
     //crossMarkDetector filter(Dparams, Rparams);
-    double start_last = getTickCount();
+    start_last = getTickCount();
     while (capture_left.read(img_left) && capture_right.read(img_right))  {
-        double start = getTickCount();
-        double time = (start - start_last) / (double)cvGetTickFrequency() / 1000;
+        start = getTickCount();
+        fps = 1000000.0 * (double)cvGetTickFrequency() / (start - start_last);
         start_last = start;
-        cout << time << std::endl;
-        stereoRectify(cameraMatrixL, distCoeffL, cameraMatrixR, distCoeffR, imageSize, Rot, Trans, Rl, Rr, Pl, Pr, Q, CALIB_ZERO_DISPARITY, 0, imageSize, &validROIL, &validROIR);
-        initUndistortRectifyMap(cameraMatrixL, distCoeffL, Rl, Pr, imageSize, CV_32FC1, mapLx, mapLy);
-        initUndistortRectifyMap(cameraMatrixR, distCoeffR, Rr, Pr, imageSize, CV_32FC1, mapRx, mapRy);
 
         cvtColor(img_left, img_left, COLOR_BGR2GRAY);
         img_left.convertTo(img_left, CV_32FC1); img_left = img_left / 255;
         cvtColor(img_right, img_right, COLOR_BGR2GRAY);
         img_right.convertTo(img_right, CV_32FC1); img_right = img_right / 255;
-        //remap(img_left, img_left, mapLx, mapLy, INTER_LINEAR);
-        //remap(img_right, img_right, mapRx, mapRy, INTER_LINEAR);
+  
+        undistort(img_left, img_left_undistort, cameraMatrixL, distCoeffL, cameraMatrixL);
+        undistort(img_right, img_right_undistort, cameraMatrixR, distCoeffR, cameraMatrixR);
 
-        vector<Mat>vImgs;
-        vImgs.push_back(img_left);
-        vImgs.push_back(img_right);
+        vImgs.push_back(img_left_undistort);
+        vImgs.push_back(img_right_undistort);
         hconcat(vImgs, img_stereo);
 
         crossMarkDetectorParams Dparams;
@@ -187,14 +306,12 @@ int main(int argc, char* argv[]) {
         //imwrite("img_stereo.bmp", img_stereo * 255);
 
         crossMarkDetector filter(Dparams, Rparams);
-        filter.feed(img_stereo, cnt++);
+        filter.feed(img_stereo, cnt++, fps);
         
         img_stereo.release();
         waitKey(1);
-    }
-    
-    
-
+    }*/
+ 
     //Test
     /*freopen_s(&stream2, "./RandomCrossPointBlur/Blur2/result11.txt", "w", stdout);
     char imagename_test[100];
@@ -217,39 +334,6 @@ int main(int argc, char* argv[]) {
     waitKey(0);
     
     return 0;
-}
-
-//HikVision工业相机读取
-bool PrintDeviceInfo(MV_CC_DEVICE_INFO* pstMVDevInfo)
-{
-    if (NULL == pstMVDevInfo)
-    {
-        printf("The Pointer of pstMVDevInfo is NULL!\n");
-        return false;
-    }
-    if (pstMVDevInfo->nTLayerType == MV_GIGE_DEVICE)
-    {
-        int nIp1 = ((pstMVDevInfo->SpecialInfo.stGigEInfo.nCurrentIp & 0xff000000) >> 24);
-        int nIp2 = ((pstMVDevInfo->SpecialInfo.stGigEInfo.nCurrentIp & 0x00ff0000) >> 16);
-        int nIp3 = ((pstMVDevInfo->SpecialInfo.stGigEInfo.nCurrentIp & 0x0000ff00) >> 8);
-        int nIp4 = (pstMVDevInfo->SpecialInfo.stGigEInfo.nCurrentIp & 0x000000ff);
-
-        // ch:打印当前相机ip和用户自定义名字 | en:print current ip and user defined name
-        printf("CurrentIp: %d.%d.%d.%d\n", nIp1, nIp2, nIp3, nIp4);
-        printf("UserDefinedName: %s\n\n", pstMVDevInfo->SpecialInfo.stGigEInfo.chUserDefinedName);
-    }
-    else if (pstMVDevInfo->nTLayerType == MV_USB_DEVICE)
-    {
-        printf("UserDefinedName: %s\n", pstMVDevInfo->SpecialInfo.stUsb3VInfo.chUserDefinedName);
-        printf("Serial Number: %s\n", pstMVDevInfo->SpecialInfo.stUsb3VInfo.chSerialNumber);
-        printf("Device Number: %d\n\n", pstMVDevInfo->SpecialInfo.stUsb3VInfo.nDeviceNumber);
-    }
-    else
-    {
-        printf("Not support.\n");
-    }
-
-    return true;
 }
 
 int RGB2BGR(unsigned char* pRgbData, unsigned int nWidth, unsigned int nHeight)
@@ -282,139 +366,10 @@ cv::Mat Convert2Mat(MV_FRAME_OUT_INFO_EX* pstImageInfo, unsigned char* pData)
     }
     else if (pstImageInfo->enPixelType == PixelType_Gvsp_RGB8_Packed)
     {
-        RGB2BGR(pData, pstImageInfo->nWidth, pstImageInfo->nHeight);
         srcImage = cv::Mat(pstImageInfo->nHeight, pstImageInfo->nWidth, CV_8UC3, pData);
     }
 
     cv::waitKey(20);
 
     return srcImage;
-}
-
-void prepareImageRead(int nRet, void* handle) {
-    do
-    {
-        // ch:枚举设备 | en:Enum device
-        MV_CC_DEVICE_INFO_LIST stDeviceList = { 0 };
-        nRet = MV_CC_EnumDevices(MV_GIGE_DEVICE | MV_USB_DEVICE, &stDeviceList);
-        if (MV_OK != nRet)
-        {
-            printf("Enum Devices fail! nRet [0x%x]\n", nRet);
-            break;
-        }
-
-        if (stDeviceList.nDeviceNum > 0)
-        {
-            for (unsigned int i = 0; i < stDeviceList.nDeviceNum; i++)
-            {
-                printf("[device %d]:\n", i);
-                MV_CC_DEVICE_INFO* pDeviceInfo = stDeviceList.pDeviceInfo[i];
-                if (NULL == pDeviceInfo)
-                {
-                    break;
-                }
-                PrintDeviceInfo(pDeviceInfo);
-            }
-        }
-        else
-        {
-            printf("Find No Devices!\n");
-            break;
-        }
-
-        printf("Please Input camera index(0-%d):", stDeviceList.nDeviceNum - 1);
-        unsigned int nIndex = 0;
-        //scanf_s("%d", &nIndex);
-
-        if (nIndex >= stDeviceList.nDeviceNum)
-        {
-            printf("Input error!\n");
-            break;
-        }
-
-        // ch:选择设备并创建句柄 | en:Select device and create handle
-        nRet = MV_CC_CreateHandle(&handle, stDeviceList.pDeviceInfo[nIndex]);
-        if (MV_OK != nRet)
-        {
-            printf("Create Handle fail! nRet [0x%x]\n", nRet);
-            break;
-        }
-
-        // ch:打开设备 | en:Open device
-        nRet = MV_CC_OpenDevice(handle);
-        if (MV_OK != nRet)
-        {
-            printf("Open Device fail! nRet [0x%x]\n", nRet);
-            break;
-        }
-
-        // ch:探测网络最佳包大小(只对GigE相机有效) | en:Detection network optimal package size(It only works for the GigE camera)
-        if (stDeviceList.pDeviceInfo[nIndex]->nTLayerType == MV_GIGE_DEVICE)
-        {
-            int nPacketSize = MV_CC_GetOptimalPacketSize(handle);
-            if (nPacketSize > 0)
-            {
-                nRet = MV_CC_SetIntValue(handle, "GevSCPSPacketSize", nPacketSize);
-                if (nRet != MV_OK)
-                {
-                    printf("Warning: Set Packet Size fail nRet [0x%x]!", nRet);
-                }
-            }
-            else
-            {
-                printf("Warning: Get Packet Size fail nRet [0x%x]!", nPacketSize);
-            }
-        }
-
-        // ch:设置触发模式为off | en:Set trigger mode as off
-        nRet = MV_CC_SetEnumValue(handle, "TriggerMode", 0);
-        if (MV_OK != nRet)
-        {
-            printf("Set Trigger Mode fail! nRet [0x%x]\n", nRet);
-            break;
-        }
-
-        // ch:开始取流 | en:Start grab image
-        nRet = MV_CC_StartGrabbing(handle);
-        if (MV_OK != nRet)
-        {
-            printf("Start Grabbing fail! nRet [0x%x]\n", nRet);
-            break;
-        }
-
-        //// ch:停止取流 | en:Stop grab image
-        //nRet = MV_CC_StopGrabbing(handle);
-        //if (MV_OK != nRet)
-        //{
-        //    printf("Stop Grabbing fail! nRet [0x%x]\n", nRet);
-        //    break;
-        //}
-
-        //// ch:关闭设备 | Close device
-        //nRet = MV_CC_CloseDevice(handle);
-        //if (MV_OK != nRet)
-        //{
-        //    printf("ClosDevice fail! nRet [0x%x]\n", nRet);
-        //    break;
-        //}
-
-        //// ch:销毁句柄 | Destroy handle
-        //nRet = MV_CC_DestroyHandle(handle);
-        //if (MV_OK != nRet)
-        //{
-        //    printf("Destroy Handle fail! nRet [0x%x]\n", nRet);
-        //    break;
-        //}
-    } while (0);
-
-    if (nRet != MV_OK)
-    {
-        if (handle != NULL)
-        {
-            MV_CC_DestroyHandle(handle);
-            handle = NULL;
-        }
-    }
-
-    return ;
 }

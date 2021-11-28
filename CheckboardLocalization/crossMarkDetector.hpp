@@ -20,20 +20,19 @@
 using namespace cv;
 
 //相机标定参数
-const Mat cameraMatrixL = (Mat_<double>(3, 3) << 2175.16512261259, 0, 959.993795354860,
-    0, 2174.34882395825, 572.808101410889,
+const Mat cameraMatrixL = (Mat_<double>(3, 3) << 2172.74193893484, 0, 953.554500502659,
+    0, 2172.50383707206, 561.003715774471,
     0, 0, 1);
-const Mat distCoeffL = (Mat_<double>(5, 1) << -0.167822388435269, 0.207929984358728, 0, 0, 0.0535633542290350);
-const Mat cameraMatrixR = (Mat_<double>(3, 3) << 2161.64059733675, 0, 972.355518599543,
-    0, 2161.74756958146, 600.591555771023,
+const Mat distCoeffL = (Mat_<double>(5, 1) << -0.162153572147121, 0.218192111891585, 0, 0, 0);
+const Mat cameraMatrixR = (Mat_<double>(3, 3) << 2164.26779775243, 0, 969.057532315790,
+    0, 2164.02639430299, 597.199434116932,
     0, 0, 1);
-const Mat distCoeffR = (Mat_<double>(5, 1) << -0.176306122962435, 0.237195122083599, 0, 0, 0.0449622672732098);
+const Mat distCoeffR = (Mat_<double>(5, 1) << -0.176656508663227, 0.244378163295890, 0, 0, 0);
 
-const Mat Trans = (Mat_<double>(3, 1) << -173.781360311573, 0.615014125269484, 36.9010831188838);
-const Mat Rot = (Mat_<double>(3, 3) << 0.947511081886498, 0.0151536793119088, 0.319363610490598,
-    -0.0117498340123378, 0.999851802311425, -0.0125823215377342,
-    -0.319506950007291, 0.00816941968001684, 0.947548716150854);
-
+const Mat Trans = (Mat_<double>(3, 1) << -158.999940169729, 0.610108447681581, 43.6659362871682);
+const Mat Rot = (Mat_<double>(3, 3) << 0.876547288310667, 0.0108766333101352, 0.481192840972363,
+    -0.00706938387310286, 0.999927729613869, -0.00972416376393967,
+    -0.481263831143450, 0.00512195246854760, 0.876560830995795);
 
 struct crossMarkDetectorParams
 {
@@ -81,24 +80,23 @@ private:
     linkTableInform linkTabel[1024];
    
     void findCrossPoint(const Mat &img, std::vector<pointInform> &crossPtsList);                                                                       // 寻找交叉点(比响应器的结果多一轮非极大值抑制), 形成crossPtsList
-    void buildMatrix(const Mat &img, std::vector<pointInform> &crossPtsList, int cnt);                                                                          // 基于crossPtsList解读棋盘格信息, 改变mLabel和mPos
+    void buildMatrix(const Mat &img, std::vector<pointInform> &crossPtsList, int cnt, double fps);                                                                          // 基于crossPtsList解读棋盘格信息, 改变mLabel和mPos
     void displayMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, std::vector<Point>& centerpoint, bool update[10], std::vector<Point2f>& cartisian_dst, int cnt);       // 显示最终结果
-    void displayMatrix_crosspoint(const Mat& img, std::vector<pointInform>& crossPtsList);
-    std::vector<matrixInform> extractLinkTable(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, int matrix2[10][100][100], int labelnum, std::vector<Point>& centerpoint); // 提取LinkTable信息，获得Bias
+    std::vector<matrixInform> extractLinkTable(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, int matrix2[10][100][100], int labelnum, std::vector<Point>& centerpoint);     // 提取LinkTable信息，获得Bias
     void outputLists(std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, bool update[10]);
-    void hydraCode_Mono_Homography(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt);
-    void hydraCode_Mono_PnP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt);
-    void hydraCode_stereo_ICP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt);
+    void solveTransformationUsingHomography(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt);       
+    void solveTransformationUsingPnP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt);
+    void solveTransformationUsingICP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt, double fps);
 
     std::vector<std::vector<int>> buildNeighbors(const std::vector<pointInform> &crossPtsList, int r);
     // 基于边长2*r+1, 为crossPtsList中的所有点生成近邻索引
     std::vector<linkInform> buildLinkers(std::vector<pointInform> &crossPtsList, float T);
     // 基于夹角阈值T, 为crossPtsList中的所有点生成连接信息
     
-    void triangulation(const std::vector<Point2f>& points_left, const std::vector<Point2f>& points_right, std::vector<Point3f>& points); //双目测距
+    void triangulation(const std::vector<Point2f>& points_left, const std::vector<Point2f>& points_right, std::vector<Point3f>& points); //三角测量
     void distAngle(const Point2f A, const Point2f B, float &dist, float &angle); // 计算两点连线的距离和角度,左上0°顺时针
     bool checkIncludedAngle(const float A, const float B, const float T); // 判断两个角度的夹角是否在阈值T以内
-    Point2f pixel2cam(const Point2d& p, const Mat& K);
+    Point2f pixel2cam(const Point2d& p, const Mat& K); //像素坐标系与相机坐标系间转换
    
 public:
     crossMarkDetectorParams Dparams;    // 标记图案检测器的参数
@@ -107,8 +105,9 @@ public:
     crossMarkDetector(crossMarkDetectorParams Dparams, crossPointResponderParams Rparams);
     ~crossMarkDetector();
     
-    void feed(const Mat &img, int cnt);
+    void feed(const Mat &img, int cnt, double fps);
     // 向交叉点响应器输入图像和测试点
 };
 
+#pragma warning(disable:4996)
 #endif /* crossMarkDetector_hpp */
