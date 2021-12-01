@@ -34,6 +34,7 @@ const Mat Rot = (Mat_<double>(3, 3) << 0.876547288310667, 0.0108766333101352, 0.
     -0.00706938387310286, 0.999927729613869, -0.00972416376393967,
     -0.481263831143450, 0.00512195246854760, 0.876560830995795);
 
+
 struct crossMarkDetectorParams
 {
     int height, width;        // 图像的预期尺寸
@@ -80,13 +81,13 @@ private:
     linkTableInform linkTabel[1024];
    
     void findCrossPoint(const Mat &img, std::vector<pointInform> &crossPtsList);                                                                       // 寻找交叉点(比响应器的结果多一轮非极大值抑制), 形成crossPtsList
-    void buildMatrix(const Mat &img, std::vector<pointInform> &crossPtsList, int cnt, double fps);                                                                          // 基于crossPtsList解读棋盘格信息, 改变mLabel和mPos
+    void buildMatrix(const Mat &img, std::vector<pointInform> &crossPtsList, int cnt, double fps, bool ButtonPressed, std::vector<Point3f>& endEffectorWorldPoints);                                                                          // 基于crossPtsList解读棋盘格信息, 改变mLabel和mPos
     void displayMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, std::vector<Point>& centerpoint, bool update[10], std::vector<Point2f>& cartisian_dst, int cnt);       // 显示最终结果
     std::vector<matrixInform> extractLinkTable(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, std::vector<linkInform> links, int matrix2[10][100][100], int labelnum, std::vector<Point>& centerpoint);     // 提取LinkTable信息，获得Bias
     void outputLists(std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, bool update[10]);
     void solveTransformationUsingHomography(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt);       
     void solveTransformationUsingPnP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt);
-    void solveTransformationUsingICP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt, double fps);
+    void solveTransformationUsingICP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], double fps, bool ButtonPressed, std::vector<Point3f>& endEffectorWorldPoints);
 
     std::vector<std::vector<int>> buildNeighbors(const std::vector<pointInform> &crossPtsList, int r);
     // 基于边长2*r+1, 为crossPtsList中的所有点生成近邻索引
@@ -105,7 +106,7 @@ public:
     crossMarkDetector(crossMarkDetectorParams Dparams, crossPointResponderParams Rparams);
     ~crossMarkDetector();
     
-    void feed(const Mat &img, int cnt, double fps);
+    void feed(const Mat &img, int cnt, double fps, bool ButtonPressed, std::vector<Point3f>& endEffectorWorldPoints);
     // 向交叉点响应器输入图像和测试点
 };
 

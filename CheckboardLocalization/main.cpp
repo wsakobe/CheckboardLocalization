@@ -1,12 +1,8 @@
 #include "crossMarkDetector.hpp"
 #include <stdio.h>
 #include <process.h>
-//#include <winsock.h>
-//#include <WinUser.h>
 #include <conio.h>
 #include "mvcameracontrol.h"
-
-//#define KEYDOWN( vk ) ( 0x8000 & ::GetAsyncKeyState( vk ) )
 
 using namespace std;
 using namespace cv;
@@ -39,6 +35,8 @@ vector<Mat>vImgs;
 
 double start, start_last;
 double fps;
+bool QButtonPressed = false;
+std::vector<Point3f> endEffectorWorldPoints;
 
 int main(int argc, char* argv[]) {
     const char* imagename = "76.bmp";//此处为测试图片路径
@@ -103,7 +101,7 @@ int main(int argc, char* argv[]) {
                 nRet2 = MV_CC_CloseDevice(handle2);
                 if ((MV_OK != nRet1) || (MV_OK != nRet2))
                 {
-                    printf("ClosDevice fail! nRet [0x%x]\n", nRet1);
+                    printf("Close Device fail! nRet [0x%x]\n", nRet1);
                     break;
                 }
 
@@ -118,6 +116,11 @@ int main(int argc, char* argv[]) {
                 printf("Device successfully closed.\n");
                 break;
             }
+            if (ch == 113) {
+                QButtonPressed = true;
+                printf("Q\n");
+            }
+            ch = 0;
         }
         nRet1 = MV_CC_GetOneFrameTimeout(handle1, pData1, g_nPayloadSize, &stImageInfo1, 100);
         nRet2 = MV_CC_GetOneFrameTimeout(handle2, pData2, g_nPayloadSize, &stImageInfo2, 100);
@@ -127,7 +130,6 @@ int main(int argc, char* argv[]) {
             start = getTickCount();
             fps = 1000000.0 * (double)cvGetTickFrequency() / (start - start_last);
             start_last = start;
-            printf("%.2f\n", fps);
             img_left.convertTo(img_left, CV_32FC1); img_left = img_left / 255;
             img_right.convertTo(img_right, CV_32FC1); img_right = img_right / 255;
 
@@ -146,10 +148,11 @@ int main(int argc, char* argv[]) {
             //imwrite("img_stereo.bmp", img_stereo * 255);
 
             crossMarkDetector filter(Dparams, Rparams);
-            filter.feed(img_stereo, cnt++, fps);
+            filter.feed(img_stereo, cnt++, fps, QButtonPressed, endEffectorWorldPoints);
 
             img_stereo.release();
             vImgs.clear();
+            QButtonPressed = false;
             waitKey(1);
         }
     }

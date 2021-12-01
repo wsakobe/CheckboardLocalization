@@ -9,6 +9,7 @@
 #include <cstring>
 #include <iostream>
 #include <fstream>
+#include <conio.h>
 
 using namespace cv;
 
@@ -24,7 +25,7 @@ crossMarkDetector::~crossMarkDetector()
 {
 }
 
-void crossMarkDetector::feed(const Mat& img, int cnt, double fps)
+void crossMarkDetector::feed(const Mat& img, int cnt, double fps, bool ButtonPressed, std::vector<Point3f> &endEffectorWorldPoints)
 {
 	assert(img.type() == CV_32FC1); //判断图片格式是否正确
 	std::ifstream OpenFile;
@@ -40,7 +41,7 @@ void crossMarkDetector::feed(const Mat& img, int cnt, double fps)
 		}
 	}
 	findCrossPoint(img, crossPtsList);
-	buildMatrix(img, crossPtsList, cnt, fps);
+	buildMatrix(img, crossPtsList, cnt, fps, ButtonPressed, endEffectorWorldPoints);
 }
 
 void crossMarkDetector::findCrossPoint(const Mat& img, std::vector<pointInform>& crossPtsList)
@@ -204,7 +205,7 @@ std::vector<linkInform> crossMarkDetector::buildLinkers(std::vector<pointInform>
 	return links;
 }
 
-void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, int cnt, double fps)
+void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, int cnt, double fps, bool ButtonPressed, std::vector<Point3f>& endEffectorWorldPoints)
 {
 	// 建立连接
 	std::vector<linkInform> links = buildLinkers(crossPtsList, Dparams.maxSupportAngle);
@@ -264,7 +265,7 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 	matrix = extractLinkTable(img, crossPtsList, matrix, links, matrix2, labelNum, centerpoint);
 	//solveTransformationUsingHomography(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
 	//solveTransformationUsingPnP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
-	solveTransformationUsingICP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt, fps);
+	solveTransformationUsingICP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, fps, ButtonPressed, endEffectorWorldPoints);
 	//displayMatrix(img, crossPtsList, matrix, links, centerpoint, updateSuccess, cartisian_dst, cnt);
 	//outputLists(crossPtsList, matrix, updateSuccess);
 }
@@ -550,14 +551,14 @@ void crossMarkDetector::solveTransformationUsingPnP(const Mat& img, std::vector<
 	double sphere3[3] = { 0.100385230832603, 0.0520301823252862, 0.334430153267773 };
 	
 	int val;
-	double WorldCoor[16][16][3];
+	double WorldCoor[30][8][3];
 	memset(WorldCoor, 0, sizeof(WorldCoor));
 	std::ifstream OpenFile;
 	OpenFile.open("registration_new.txt");
 	while (!OpenFile.eof()) {
 		OpenFile >> val;
 		//val = ((val - 1) / 6) * 15 + ((val - 1) % 6);
-		OpenFile >> WorldCoor[val / 15][val % 15][0] >> WorldCoor[val / 15][val % 15][1] >> WorldCoor[val / 15][val % 15][2];
+		OpenFile >> WorldCoor[(val - 1) / 7][(val - 1) % 7][0] >> WorldCoor[(val - 1) / 7][(val - 1) % 7][1] >> WorldCoor[(val - 1) / 7][(val - 1) % 7][2];
 	}
 	bool sig1 = false;
 	
@@ -572,14 +573,14 @@ void crossMarkDetector::solveTransformationUsingPnP(const Mat& img, std::vector<
 		dstPoints_pnp.clear();
 		for (int i = 0; i < crossPtsList.size(); i++)
 			if (matrix[i].mLabel == labelnow) {
-				srcWorldCoor.push_back(Point3d(WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][0] / 1000.0, WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][1] / 1000.0, WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][2] / 1000.0));
+				srcWorldCoor.push_back(Point3d(WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][0], WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][1], WorldCoor[matrix[i].mPos.x][matrix[i].mPos.y][2]));
 				dstPoints_pnp.push_back(Point2d((double)crossPtsList[i].subPos.x, (double)crossPtsList[i].subPos.y));
 			}
 		Mat rvec, tvec, R;
-		solvePnPRansac(srcWorldCoor, dstPoints_pnp, cameraMatrixL, distCoeffL, rvec, tvec, false, 50, 1, 0.99, noArray(), SOLVEPNP_UPNP);
+		solvePnPRansac(srcWorldCoor, dstPoints_pnp, cameraMatrixL, distCoeffL, rvec, tvec, false, 50, 1, 0.99, noArray(), SOLVEPNP_EPNP);
 		Rodrigues(rvec, R);
 		//std::cout << R << std::endl << "det(R): " << determinant(R) << std::endl <<tvec << std::endl;
-
+		/*
 		memset(sphere_world, 0, sizeof(sphere_world));
 		for (int x = 0; x < 3; x++){
 			for (int y = 0; y < 3; y++) {
@@ -609,99 +610,73 @@ void crossMarkDetector::solveTransformationUsingPnP(const Mat& img, std::vector<
 		circle(imgMark_pnp, imagePoints[axesPoints.size() - 3], 8, Scalar(0, 255, 255));
 		circle(imgMark_pnp, imagePoints[axesPoints.size() - 2], 8, Scalar(0, 255, 255));
 		circle(imgMark_pnp, imagePoints[axesPoints.size() - 1], 8, Scalar(0, 255, 255));
-
+		*/
 		//绘制边框
+		std::vector<Point3f> axesPoints;
+		std::vector<Point2f> imagePoints;
 		axesPoints.clear();
 		imagePoints.clear();
-		for (int i = 0; i < 6; i++)
-			axesPoints.push_back(Point3d(WorldCoor[i][0][0] / 1000.0, WorldCoor[i][0][1] / 1000.0, WorldCoor[i][0][2] / 1000.0));
+		for (int i = 9; i < 19; i++)
+			axesPoints.push_back(Point3d(WorldCoor[i][2][0], WorldCoor[i][2][1], WorldCoor[i][2][2]));
 		projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
 		for (int i = 0; i < axesPoints.size() - 1; i++) {
 			line(imgMark_pnp, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-			circle(imgMark_pnp, imagePoints[i], 3, Scalar(0, 0, 255));
+			circle(imgMark_pnp, imagePoints[i], 2, Scalar(0, 0, 255));
 		}
 
 		axesPoints.clear();
 		imagePoints.clear();
-		for (int i = 0; i < 6; i++)
-			axesPoints.push_back(Point3d(WorldCoor[i][5][0] / 1000.0, WorldCoor[i][5][1] / 1000.0, WorldCoor[i][5][2] / 1000.0));
+		for (int i = 2; i < 7; i++)
+			axesPoints.push_back(Point3d(WorldCoor[9][i][0], WorldCoor[9][i][1], WorldCoor[9][i][2]));
 		projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
 		for (int i = 0; i < axesPoints.size() - 1; i++) {
 			line(imgMark_pnp, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-			circle(imgMark_pnp, imagePoints[i], 3, Scalar(0, 0, 255));
+			circle(imgMark_pnp, imagePoints[i], 2, Scalar(0, 0, 255));
 		}
 
 		axesPoints.clear();
 		imagePoints.clear();
-		for (int i = 0; i < 6; i++)
-			axesPoints.push_back(Point3d(WorldCoor[0][i][0] / 1000.0, WorldCoor[0][i][1] / 1000.0, WorldCoor[0][i][2] / 1000.0));
+		for (int i = 2; i < 7; i++)
+			axesPoints.push_back(Point3d(WorldCoor[18][i][0], WorldCoor[18][i][1], WorldCoor[18][i][2]));
 		projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
 		for (int i = 0; i < axesPoints.size() - 1; i++) {
 			line(imgMark_pnp, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-			circle(imgMark_pnp, imagePoints[i], 3, Scalar(0, 0, 255));
+			circle(imgMark_pnp, imagePoints[i], 2, Scalar(0, 0, 255));
 		}
 
 		axesPoints.clear();
 		imagePoints.clear();
-		for (int i = 0; i < 6; i++)
-			axesPoints.push_back(Point3d(WorldCoor[5][i][0] / 1000.0, WorldCoor[5][i][1] / 1000.0, WorldCoor[5][i][2] / 1000.0));
+		for (int i = 9; i < 19; i++)
+			axesPoints.push_back(Point3d(WorldCoor[i][6][0], WorldCoor[i][6][1], WorldCoor[i][6][2]));
 		projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
 		for (int i = 0; i < axesPoints.size() - 1; i++) {
 			line(imgMark_pnp, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-			circle(imgMark_pnp, imagePoints[i], 3, Scalar(0, 0, 255));
+			circle(imgMark_pnp, imagePoints[i], 2, Scalar(0, 0, 255));
 		}
 
+		//绘制末端执行器位姿
 		axesPoints.clear();
 		imagePoints.clear();
-		for (int i = 7; i < 13; i++)
-			axesPoints.push_back(Point3d(WorldCoor[0][i][0] / 1000.0, WorldCoor[0][i][1] / 1000.0, WorldCoor[0][i][2] / 1000.0));
-		projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
-		for (int i = 0; i < axesPoints.size() - 1; i++) {
-			line(imgMark_pnp, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-			circle(imgMark_pnp, imagePoints[i], 3, Scalar(0, 0, 255));
-		}
+		Point3f EndEffector_point = Point3f(29.9093, 212.3799, 369);
+		Mat endEffector_point = (Mat_<float>(3, 1) << EndEffector_point.x, EndEffector_point.y, EndEffector_point.z);
+		Mat EndEffector_camera = R * endEffector_point + tvec;
+		std::vector<Point3f> endEffector_camera;
+		endEffector_camera = Mat_<Point3f>(EndEffector_camera);
+		std::cout << EndEffector_camera << std::endl;
 
-		axesPoints.clear();
-		imagePoints.clear();
-		for (int i = 7; i < 13; i++)
-			axesPoints.push_back(Point3d(WorldCoor[15][i][0] / 1000.0, WorldCoor[15][i][1] / 1000.0, WorldCoor[15][i][2] / 1000.0));
+		axesPoints.push_back(EndEffector_point);
 		projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
-		for (int i = 0; i < axesPoints.size() - 1; i++) {
-			line(imgMark_pnp, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-			circle(imgMark_pnp, imagePoints[i], 3, Scalar(0, 0, 255));
-		}
-
-		axesPoints.clear();
-		imagePoints.clear();
-		for (int i = 0; i < 16; i++)
-			axesPoints.push_back(Point3d(WorldCoor[i][12][0] / 1000.0, WorldCoor[i][12][1] / 1000.0, WorldCoor[i][12][2] / 1000.0));
-		projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
-		for (int i = 0; i < axesPoints.size() - 1; i++) {
-			line(imgMark_pnp, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-			circle(imgMark_pnp, imagePoints[i], 3, Scalar(0, 0, 255));
-		}
-
-		axesPoints.clear();
-		imagePoints.clear();
-		for (int i = 0; i < 16; i++)
-			axesPoints.push_back(Point3d(WorldCoor[i][7][0] / 1000.0, WorldCoor[i][7][1] / 1000.0, WorldCoor[i][7][2] / 1000.0));
-		projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
-		for (int i = 0; i < axesPoints.size() - 1; i++) {
-			line(imgMark_pnp, imagePoints[i], imagePoints[i + 1], Scalar(0, 100, 0), 2);
-			circle(imgMark_pnp, imagePoints[i], 3, Scalar(0, 0, 255));
-		}
+		circle(imgMark_pnp, imagePoints[0], 4, Scalar(120, 120, 0));
 		labelnow++;
 	}
-	if (!sig1)
-		printf("0 0 0\n0 0 0\n0 0 0\n");
 
 	imshow("imgMark_pnp", imgMark_pnp);
 	char str[100];
 	sprintf_s(str, "./img1/%d%s", cnt, ".bmp");
-	imwrite(str, 255 * imgMark_pnp);
+	//imwrite(str, 255 * imgMark_pnp);
 }
 
-void crossMarkDetector::solveTransformationUsingICP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], int cnt, double fps) {
+void crossMarkDetector::solveTransformationUsingICP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], double fps, bool ButtonPressed, std::vector<Point3f>& endEffectorWorldPoints) {
 	Mat imgMark_stereo(Dparams.height, Dparams.width, CV_32FC3);
 	Mat ide = Mat::eye(3, 3, CV_32FC1);
 	cvtColor(img, imgMark_stereo, COLOR_GRAY2RGB);
@@ -821,18 +796,46 @@ void crossMarkDetector::solveTransformationUsingICP(const Mat& img, std::vector<
 	//绘制末端执行器位姿
 	axesPoints.clear();
 	imagePoints.clear();
-	Point3f EndEffector_point = Point3f(29.9093, 212.3799, 369);
+	Point3f EndEffector_point = Point3f(29.3093, 211, 369);
 	Mat endEffector_point = (Mat_<float>(3, 1) << EndEffector_point.x, EndEffector_point.y, EndEffector_point.z);
 	Mat EndEffector_camera = R * endEffector_point + tvec;
 	std::vector<Point3f> endEffector_camera;
 	endEffector_camera = Mat_<Point3f>(EndEffector_camera);
-	std::cout << EndEffector_camera << std::endl;
-
+	
 	axesPoints.push_back(EndEffector_point);
 	projectPoints(axesPoints, rvec, tvec, cameraMatrixL, distCoeffL, imagePoints);
 	circle(imgMark_stereo, imagePoints[0], 4, Scalar(120, 120, 0));
 	
 	Mat imgMark_Camera1(imgMark_stereo, Rect(0, 0, 1920, 1200));
+	
+	if ((ButtonPressed) || (endEffectorWorldPoints.size() % 100 != 0)) {
+		endEffectorWorldPoints.push_back(endEffector_camera[0]);
+		putText(imgMark_Camera1, "Collecting End Point. Hold On!", Point(700, 50), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 250), 4, 8);
+	}
+	else
+		putText(imgMark_Camera1, "Waiting for the command to start collecting", Point(600, 50), FONT_HERSHEY_SIMPLEX, 1, Scalar(120, 23, 0), 4, 8);
+	
+	Mat R_c = Mat::eye(3, 3, CV_32FC1);
+	Mat rvec_c = Mat::zeros(3, 1, CV_32FC1);
+	Mat tvec_c = Mat::zeros(3, 1, CV_32FC1);
+	Rodrigues(R_c, rvec_c);
+	imagePoints.clear();
+	if (endEffectorWorldPoints.size() > 0) {
+		projectPoints(endEffectorWorldPoints, rvec_c, tvec_c, cameraMatrixL, distCoeffL, imagePoints);
+		for (int i = 0; i < imagePoints.size(); i++) {
+			circle(imgMark_Camera1, imagePoints[i], 2, Scalar(0, 120, 120));
+		}
+	}
+
+	if (endEffectorWorldPoints.size() == 1800) {
+		std::ofstream writeFile;
+		writeFile.open("endEffectorWorldPoints.txt");
+		for (int i = 0; i < endEffectorWorldPoints.size(); i++) {
+			writeFile << endEffectorWorldPoints[i].x << " " << endEffectorWorldPoints[i].y << " " << endEffectorWorldPoints[i].z << std::endl;
+		}
+		writeFile.close();
+		printf("endEffectorWorldPoints Writing Finished.\n");
+	}
 
 	char str[20];
 	sprintf_s(str, "FPS: %.3lf", fps);
