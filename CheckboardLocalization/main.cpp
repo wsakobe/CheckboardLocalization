@@ -35,7 +35,7 @@ vector<Mat>vImgs;
 
 double start, start_last;
 double fps;
-bool QButtonPressed = false;
+bool QButtonPressed = false, ZButtonPressed = false;
 std::vector<Point3f> endEffectorWorldPoints;
 
 int main(int argc, char* argv[]) {
@@ -120,6 +120,10 @@ int main(int argc, char* argv[]) {
                 QButtonPressed = true;
                 printf("Q\n");
             }
+            if (ch == 122){
+                ZButtonPressed ^= true ;
+                printf("Z\n");
+            }
             ch = 0;
         }
         nRet1 = MV_CC_GetOneFrameTimeout(handle1, pData1, g_nPayloadSize, &stImageInfo1, 100);
@@ -148,7 +152,7 @@ int main(int argc, char* argv[]) {
             //imwrite("img_stereo.bmp", img_stereo * 255);
 
             crossMarkDetector filter(Dparams, Rparams);
-            filter.feed(img_stereo, cnt++, fps, QButtonPressed, endEffectorWorldPoints);
+            filter.feed(img_stereo, cnt++, fps, QButtonPressed, ZButtonPressed, endEffectorWorldPoints);
 
             img_stereo.release();
             vImgs.clear();

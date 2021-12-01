@@ -25,7 +25,7 @@ crossMarkDetector::~crossMarkDetector()
 {
 }
 
-void crossMarkDetector::feed(const Mat& img, int cnt, double fps, bool ButtonPressed, std::vector<Point3f> &endEffectorWorldPoints)
+void crossMarkDetector::feed(const Mat& img, int cnt, double fps, bool ButtonPressed, bool ZButtonPressed, std::vector<Point3f> &endEffectorWorldPoints)
 {
 	assert(img.type() == CV_32FC1); //判断图片格式是否正确
 	std::ifstream OpenFile;
@@ -41,7 +41,7 @@ void crossMarkDetector::feed(const Mat& img, int cnt, double fps, bool ButtonPre
 		}
 	}
 	findCrossPoint(img, crossPtsList);
-	buildMatrix(img, crossPtsList, cnt, fps, ButtonPressed, endEffectorWorldPoints);
+	buildMatrix(img, crossPtsList, cnt, fps, ButtonPressed, ZButtonPressed, endEffectorWorldPoints);
 }
 
 void crossMarkDetector::findCrossPoint(const Mat& img, std::vector<pointInform>& crossPtsList)
@@ -205,7 +205,7 @@ std::vector<linkInform> crossMarkDetector::buildLinkers(std::vector<pointInform>
 	return links;
 }
 
-void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, int cnt, double fps, bool ButtonPressed, std::vector<Point3f>& endEffectorWorldPoints)
+void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& crossPtsList, int cnt, double fps, bool ButtonPressed, bool ZButtonPressed, std::vector<Point3f>& endEffectorWorldPoints)
 {
 	// 建立连接
 	std::vector<linkInform> links = buildLinkers(crossPtsList, Dparams.maxSupportAngle);
@@ -265,7 +265,7 @@ void crossMarkDetector::buildMatrix(const Mat& img, std::vector<pointInform>& cr
 	matrix = extractLinkTable(img, crossPtsList, matrix, links, matrix2, labelNum, centerpoint);
 	//solveTransformationUsingHomography(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
 	//solveTransformationUsingPnP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, cnt);
-	solveTransformationUsingICP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, fps, ButtonPressed, endEffectorWorldPoints);
+	solveTransformationUsingICP(img, crossPtsList, matrix, labelNum, cartisian_dst, updateSuccess, fps, ButtonPressed, ZButtonPressed, endEffectorWorldPoints);
 	//displayMatrix(img, crossPtsList, matrix, links, centerpoint, updateSuccess, cartisian_dst, cnt);
 	//outputLists(crossPtsList, matrix, updateSuccess);
 }
@@ -676,7 +676,7 @@ void crossMarkDetector::solveTransformationUsingPnP(const Mat& img, std::vector<
 	//imwrite(str, 255 * imgMark_pnp);
 }
 
-void crossMarkDetector::solveTransformationUsingICP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], double fps, bool ButtonPressed, std::vector<Point3f>& endEffectorWorldPoints) {
+void crossMarkDetector::solveTransformationUsingICP(const Mat& img, std::vector<pointInform>& crossPtsList, std::vector<matrixInform> matrix, int labelnum, std::vector<Point2f>& cartisian_dst, bool update[10], double fps, bool ButtonPressed, bool ZButtonPressed, std::vector<Point3f>& endEffectorWorldPoints) {
 	Mat imgMark_stereo(Dparams.height, Dparams.width, CV_32FC3);
 	Mat ide = Mat::eye(3, 3, CV_32FC1);
 	cvtColor(img, imgMark_stereo, COLOR_GRAY2RGB);
@@ -808,6 +808,10 @@ void crossMarkDetector::solveTransformationUsingICP(const Mat& img, std::vector<
 	
 	Mat imgMark_Camera1(imgMark_stereo, Rect(0, 0, 1920, 1200));
 	
+	if (ZButtonPressed) {
+		std::cout << EndEffector_camera << std::endl << std::endl;
+	}
+
 	if ((ButtonPressed) || (endEffectorWorldPoints.size() % 100 != 0)) {
 		endEffectorWorldPoints.push_back(endEffector_camera[0]);
 		putText(imgMark_Camera1, "Collecting End Point. Hold On!", Point(700, 50), FONT_HERSHEY_SIMPLEX, 1, Scalar(0, 0, 250), 4, 8);
